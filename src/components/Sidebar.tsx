@@ -24,7 +24,7 @@ const navItems = [
 export default function Sidebar() {
     const pathname = usePathname();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -33,7 +33,6 @@ export default function Sidebar() {
         if (saved !== null) {
             setIsCollapsed(JSON.parse(saved));
         } else {
-            // Default to collapsed on tablet
             const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
             setIsCollapsed(isTablet);
         }
@@ -83,28 +82,28 @@ export default function Sidebar() {
             {/* Sidebar */}
             <aside
                 className={`
-          fixed top-0 left-0 h-full z-50 bg-white border-r border-slate-200 transition-all duration-300
-          lg:sticky lg:h-screen
-          ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
-          lg:translate-x-0 ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
-        `}
+                    fixed top-0 left-0 h-full z-50 bg-white border-r border-slate-200 transition-all duration-300
+                    lg:sticky lg:h-screen overflow-x-hidden
+                    ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
+                    lg:translate-x-0 ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
+                `}
             >
-                <div className="flex flex-col h-full">
-                    {/* Logo */}
+                <div className="flex flex-col h-full w-full">
+                    {/* Logo Section */}
                     <div className={`border-b border-slate-200 transition-all ${isCollapsed ? 'p-4' : 'p-6'}`}>
                         <Link href="/" className="flex items-center gap-3 group">
                             <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-sm group-hover:bg-emerald-600 transition-colors shrink-0">
                                 <Home className="w-5 h-5 text-white" />
                             </div>
-                            <div className={`transition-all duration-300 overflow-hidden ${isCollapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'}`}>
+                            <div className={`transition-all duration-300 overflow-hidden min-w-0 ${isCollapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'}`}>
                                 <p className="font-bold text-slate-900 whitespace-nowrap">Pandey's</p>
                                 <p className="text-xs text-slate-500 whitespace-nowrap">Household</p>
                             </div>
                         </Link>
                     </div>
 
-                    {/* Navigation */}
-                    <nav className={`flex-1 overflow-y-auto ${isCollapsed ? 'p-3' : 'p-4'}`}>
+                    {/* Navigation Section */}
+                    <nav className={`flex-1 overflow-y-auto overflow-x-hidden ${isCollapsed ? 'p-3' : 'p-4'}`}>
                         <div className="space-y-1">
                             {navItems.map((item) => {
                                 const Icon = item.icon;
@@ -116,16 +115,16 @@ export default function Sidebar() {
                                         href={item.href}
                                         onClick={() => setIsMobileOpen(false)}
                                         className={`
-                      group relative flex items-center gap-3 rounded-lg transition-all
-                      ${isCollapsed ? 'lg:justify-center p-3' : 'px-3 py-2.5'}
-                      ${active
+                                            group relative flex items-center gap-3 rounded-lg transition-all
+                                            ${isCollapsed ? 'lg:justify-center p-3' : 'px-3 py-2.5'}
+                                            ${active
                                                 ? 'bg-emerald-50 text-emerald-600'
                                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                                             }
-                    `}
+                                        `}
                                     >
                                         <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-emerald-600' : ''}`} />
-                                        <span className={`font-medium text-sm whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'lg:w-0 lg:opacity-0 lg:hidden' : 'w-auto opacity-100'}`}>
+                                        <span className={`font-medium text-sm whitespace-nowrap transition-all duration-300 overflow-hidden ${isCollapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'}`}>
                                             {item.label}
                                         </span>
 
@@ -141,23 +140,21 @@ export default function Sidebar() {
                         </div>
                     </nav>
 
-                    {/* Footer */}
-                    <div className={`border-t border-slate-200 ${isCollapsed ? 'p-3' : 'p-4'}`}>
+                    {/* Footer / Toggle Section */}
+                    <div className={`border-t border-slate-200 overflow-hidden ${isCollapsed ? 'p-3' : 'p-4'}`}>
                         <button
                             onClick={toggleCollapsed}
                             className={`
-                hidden lg:flex items-center gap-3 w-full rounded-lg transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-700
-                ${isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}
-              `}
+                                hidden lg:flex items-center gap-3 w-full rounded-lg transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-700
+                                ${isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}
+                            `}
                         >
-                            {isCollapsed ? (
-                                <ChevronRight className="w-5 h-5" />
-                            ) : (
-                                <>
-                                    <ChevronLeft className="w-5 h-5" />
-                                    <span className="font-medium text-sm">Collapse</span>
-                                </>
-                            )}
+                            <div className="flex items-center justify-center shrink-0">
+                                {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+                            </div>
+                            <span className={`font-medium text-sm whitespace-nowrap transition-all duration-300 overflow-hidden ${isCollapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'}`}>
+                                Collapse
+                            </span>
                         </button>
                     </div>
                 </div>
