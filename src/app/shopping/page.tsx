@@ -39,10 +39,24 @@ export default function ShoppingPage() {
     const [newStoreName, setNewStoreName] = useState('');
     const [newStoreColor, setNewStoreColor] = useState(DEFAULT_COLORS[0]);
     const [swipedItem, setSwipedItem] = useState<string | null>(null);
+    const [dragStart, setDragStart] = useState<number>(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
     const [moveItemId, setMoveItemId] = useState<string | null>(null);
+    const [moveItemName, setMoveItemName] = useState('');
     const [editingItem, setEditingItem] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
     const [editQty, setEditQty] = useState('');
+
+    // Detect screen size for threshold 1024px
+    useEffect(() => {
+        const checkScreenSize = () => {
+            setIsMobileOrTablet(window.innerWidth <= 1024);
+        };
+        checkScreenSize();
+        window.addEventListener('resize', checkScreenSize);
+        return () => window.removeEventListener('resize', checkScreenSize);
+    }, []);
 
     useEffect(() => {
         fetchStores();
@@ -50,16 +64,24 @@ export default function ShoppingPage() {
 
     const fetchStores = async () => {
         try {
+            console.log('Fetching stores...');
             const response = await fetch('/api/stores');
             const data = await response.json();
+            console.log('Fetch stores response:', data);
             if (data.success) {
+                console.log(`Setting ${data.data.length} stores with total items:`,
+                    data.data.reduce((sum: number, s: any) => sum + s.items.length, 0));
                 setStores(data.data);
                 if (data.data.length > 0 && !activeStore) {
                     setActiveStore(data.data[0]._id);
                 }
+            } else {
+                console.error('Failed to fetch stores:', data.error);
+                alert('Failed to load stores: ' + data.error);
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error fetching stores:', error);
+            alert('Error loading stores. Check console for details.');
         } finally {
             setIsLoading(false);
         }
@@ -74,14 +96,19 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ name: newStoreName, color: newStoreColor }),
             });
             const data = await response.json();
+            console.log('Create store response:', data);
             if (data.success) {
                 setStores([...stores, data.data]);
                 setActiveStore(data.data._id);
                 setNewStoreName('');
                 setShowAddStore(false);
+            } else {
+                console.error('Failed to create store:', data.error);
+                alert('Failed to create store: ' + data.error);
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error creating store:', error);
+            alert('Error creating store. Check console for details.');
         }
     };
 
@@ -108,13 +135,18 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ name: newItemName, quantity: newItemQty }),
             });
             const data = await response.json();
+            console.log('Add item response:', data);
             if (data.success) {
                 setStores(stores.map(s => s._id === activeStore ? data.data : s));
                 setNewItemName('');
                 setNewItemQty('');
+            } else {
+                console.error('Failed to add item:', data.error);
+                alert('Failed to add item: ' + data.error);
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error adding item:', error);
+            alert('Error adding item. Check console for details.');
         }
     };
 
@@ -146,40 +178,6 @@ export default function ShoppingPage() {
             const data = await response.json();
             if (data.success) {
                 setStores(stores.map(s => s._id === activeStore ? data.data : s));
-                setSwipedItem(null);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-        }
-    };
-
-    const moveItem = async (itemId: string, targetStoreId: string) => {
-        if (!activeStore || targetStoreId === activeStore) return;
-
-        // Find the item in current store
-        const currentStoreData = stores.find(s => s._id === activeStore);
-        const item = currentStoreData?.items.find(i => i._id === itemId);
-        if (!item) return;
-
-        try {
-            // Delete from current store
-            await fetch(`/api/stores/${activeStore}/items`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ itemId }),
-            });
-
-            // Add to target store
-            const response = await fetch(`/api/stores/${targetStoreId}/items`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: item.name, quantity: item.quantity, checked: item.checked }),
-            });
-
-            if (response.ok) {
-                // Refresh stores
-                fetchStores();
-                setMoveItemId(null);
                 setSwipedItem(null);
             }
         } catch (error) {
@@ -220,8 +218,25 @@ export default function ShoppingPage() {
 
     const startMove = (item: ShoppingItem) => {
         setMoveItemId(item._id);
+        setMoveItemName(item.name);
         setSwipedItem(null);
     };
+
+    // Touch/Drag handlers for swipe (matches reminders page)
+    const onStart = (clientX: number) => {
+        if (!isMobileOrTablet) return;
+        setDragStart(clientX);
+        setIsDragging(true);
+    };
+
+    const onMove = (clientX: number, itemId: string) => {
+        if (!isDragging || !isMobileOrTablet) return;
+        const diff = dragStart - clientX;
+        if (diff > 70) setSwipedItem(itemId);
+        if (diff < -70) setSwipedItem(null);
+    };
+
+    const onEnd = () => setIsDragging(false);
 
     const moveItemToStore = async (targetStoreId: string) => {
         if (!moveItemId || !activeStore || !targetStoreId) return;
@@ -241,6 +256,8 @@ export default function ShoppingPage() {
                     return s;
                 }));
                 setMoveItemId(null);
+                setMoveItemName('');
+                setSwipedItem(null);
             }
         } catch (error) {
             console.error('Error moving item:', error);
@@ -444,8 +461,14 @@ export default function ShoppingPage() {
                                         </div>
                                     ) : (
                                         <div
-                                            className={`relative z-10 flex items-center gap-3 px-3 sm:px-4 py-3.5 bg-white transition-transform duration-200 cursor-pointer ${swipedItem === item._id ? '-translate-x-[120px]' : 'translate-x-0'}`}
-                                            onClick={() => setSwipedItem(swipedItem === item._id ? null : item._id)}
+                                            className={`relative z-10 flex items-center gap-3 px-3 sm:px-4 py-3.5 bg-white transition-transform duration-200 touch-pan-y select-none ${isMobileOrTablet ? 'cursor-grab active:cursor-grabbing' : ''} ${swipedItem === item._id ? '-translate-x-[120px]' : 'translate-x-0'}`}
+                                            onTouchStart={(e) => onStart(e.targetTouches[0].clientX)}
+                                            onTouchMove={(e) => onMove(e.targetTouches[0].clientX, item._id)}
+                                            onTouchEnd={onEnd}
+                                            onMouseDown={(e) => onStart(e.clientX)}
+                                            onMouseMove={(e) => onMove(e.clientX, item._id)}
+                                            onMouseUp={onEnd}
+                                            onMouseLeave={onEnd}
                                         >
                                             <button
                                                 onClick={(e) => {
@@ -527,34 +550,46 @@ export default function ShoppingPage() {
                 {/* Move Item Modal */}
                 {moveItemId && (
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-sm p-5 sm:p-6 shadow-2xl">
-                            <div className="flex justify-between items-center mb-5">
-                                <h2 className="text-xl font-bold text-slate-900">Move to Store</h2>
+                        <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl border border-slate-100">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-lg sm:text-xl font-bold text-slate-900">Move Item</h2>
+                                    {moveItemName && (
+                                        <p className="text-xs sm:text-sm text-slate-500 mt-0.5 truncate">"{moveItemName}"</p>
+                                    )}
+                                </div>
                                 <button
-                                    onClick={() => setMoveItemId(null)}
-                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                    onClick={() => {
+                                        setMoveItemId(null);
+                                        setMoveItemName('');
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
                                 >
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
-                            <div className="space-y-2">
-                                {stores
-                                    .filter(s => s._id !== activeStore)
-                                    .map(store => (
-                                        <button
-                                            key={store._id}
-                                            onClick={() => moveItemToStore(store._id)}
-                                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all text-left border border-slate-100"
-                                        >
-                                            <div
-                                                className="w-4 h-4 rounded-full shrink-0"
-                                                style={{ backgroundColor: store.color }}
-                                            />
-                                            <span className="font-semibold text-slate-900 flex-1 min-w-0 truncate">{store.name}</span>
-                                            <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
-                                        </button>
-                                    ))}
-                            </div>
+                            {stores.filter(s => s._id !== activeStore).length === 0 ? (
+                                <p className="text-center py-8 text-slate-500 text-sm">No other stores available</p>
+                            ) : (
+                                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                                    {stores
+                                        .filter(s => s._id !== activeStore)
+                                        .map(store => (
+                                            <button
+                                                key={store._id}
+                                                onClick={() => moveItemToStore(store._id)}
+                                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-50 active:scale-[0.98] transition-all text-left border border-slate-100"
+                                            >
+                                                <div
+                                                    className="w-4 h-4 rounded-full shrink-0"
+                                                    style={{ backgroundColor: store.color }}
+                                                />
+                                                <span className="font-semibold text-slate-900 flex-1 min-w-0 truncate">{store.name}</span>
+                                                <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+                                            </button>
+                                        ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
