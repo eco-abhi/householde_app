@@ -461,14 +461,28 @@ export default function ShoppingPage() {
                                         </div>
                                     ) : (
                                         <div
-                                            className={`relative z-10 flex items-center gap-3 px-3 sm:px-4 py-3.5 bg-white transition-transform duration-200 touch-pan-y select-none ${isMobileOrTablet ? 'cursor-grab active:cursor-grabbing' : ''} ${swipedItem === item._id ? '-translate-x-[120px]' : 'translate-x-0'}`}
+                                            className={`relative z-10 flex items-center gap-3 px-3 sm:px-4 py-3.5 bg-white transition-transform duration-200 touch-pan-y select-none ${isMobileOrTablet ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} ${swipedItem === item._id ? '-translate-x-[120px]' : 'translate-x-0'}`}
+                                            onClick={() => {
+                                                // Desktop: Click anywhere on row to toggle actions
+                                                if (!isMobileOrTablet) {
+                                                    setSwipedItem(swipedItem === item._id ? null : item._id);
+                                                }
+                                            }}
                                             onTouchStart={(e) => onStart(e.targetTouches[0].clientX)}
                                             onTouchMove={(e) => onMove(e.targetTouches[0].clientX, item._id)}
                                             onTouchEnd={onEnd}
-                                            onMouseDown={(e) => onStart(e.clientX)}
-                                            onMouseMove={(e) => onMove(e.clientX, item._id)}
-                                            onMouseUp={onEnd}
-                                            onMouseLeave={onEnd}
+                                            onMouseDown={(e) => {
+                                                if (isMobileOrTablet) onStart(e.clientX);
+                                            }}
+                                            onMouseMove={(e) => {
+                                                if (isMobileOrTablet) onMove(e.clientX, item._id);
+                                            }}
+                                            onMouseUp={() => {
+                                                if (isMobileOrTablet) onEnd();
+                                            }}
+                                            onMouseLeave={() => {
+                                                if (isMobileOrTablet) onEnd();
+                                            }}
                                         >
                                             <button
                                                 onClick={(e) => {
