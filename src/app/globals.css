@@ -11,13 +11,54 @@
   }
 }
 
-/* Custom smooth scrolling */
+/* Safari/iOS specific fixes */
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
+}
+
+/* Fix for iOS Safari button styling */
+button,
+input,
+select,
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Fix iOS tap highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Fix iOS momentum scrolling */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Better focus styles */
 *:focus-visible {
   outline: 2px solid rgb(16 185 129);
   outline-offset: 2px;
+}
+
+/* Fix iOS Safari 100vh issue */
+.min-h-screen {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
 }

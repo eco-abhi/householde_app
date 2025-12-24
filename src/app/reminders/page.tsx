@@ -291,6 +291,11 @@ export default function RemindersPage() {
                                         <h3 className={`font-bold text-lg truncate ${reminder.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>{reminder.title}</h3>
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-black ${priorityStyle.bg} ${priorityStyle.text}`}>{reminder.priority}</span>
                                     </div>
+                                    {reminder.description && (
+                                        <p className={`text-sm mt-1 ${reminder.completed ? 'text-gray-400' : 'text-gray-600'}`}>
+                                            {reminder.description}
+                                        </p>
+                                    )}
                                     <div className="flex flex-wrap gap-2 mt-2">
                                         <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}>
                                             <Calendar className="w-3.5 h-3.5" /> {status.label}
@@ -298,6 +303,12 @@ export default function RemindersPage() {
                                         <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-semibold">
                                             {category?.icon} {category?.label}
                                         </span>
+                                        {reminder.recurrence !== 'none' && (
+                                            <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1">
+                                                <RefreshCw className="w-3.5 h-3.5" />
+                                                {RECURRENCE_OPTIONS.find(r => r.value === reminder.recurrence)?.label}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
@@ -345,6 +356,22 @@ export default function RemindersPage() {
                                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                                 className="w-full px-5 py-4 bg-gray-50 border-2 rounded-2xl outline-none"
                             />
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Recurrence</label>
+                                <select
+                                    value={formData.recurrence}
+                                    onChange={(e) => setFormData({ ...formData, recurrence: e.target.value as RecurrenceType })}
+                                    className="w-full px-5 py-4 bg-gray-50 border-2 rounded-2xl outline-none focus:border-purple-400 transition-all"
+                                >
+                                    {RECURRENCE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                </select>
+                                {formData.recurrence !== 'none' && (
+                                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                                        <RefreshCw className="w-3 h-3" />
+                                        This reminder will automatically renew when completed
+                                    </p>
+                                )}
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value as Category })} className="px-4 py-4 bg-gray-50 border-2 rounded-2xl outline-none">
                                     {CATEGORY_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}
@@ -358,7 +385,7 @@ export default function RemindersPage() {
                             <button
                                 onClick={handleSave}
                                 disabled={!formData.title.trim() || !formData.dueDate}
-                                className="w-full py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl font-bold mt-4 shadow-lg disabled:from-gray-300 disabled:shadow-none transition-all active:scale-95"
+                                className="w-full py-4 bg-linear-to-r from-purple-500 to-purple-600 text-white rounded-2xl font-bold mt-4 shadow-lg disabled:from-gray-300 disabled:shadow-none transition-all active:scale-95"
                             >
                                 {editingId ? 'Update Reminder' : 'Create Reminder'}
                             </button>
