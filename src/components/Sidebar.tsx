@@ -82,8 +82,8 @@ export default function Sidebar() {
             {/* Sidebar */}
             <aside
                 className={`
-                    fixed top-0 left-0 h-full z-50 bg-white border-r border-slate-200 transition-all duration-300
-                    lg:sticky lg:h-screen overflow-x-hidden
+                    fixed top-0 left-0 bottom-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 flex flex-col
+                    lg:sticky lg:top-0 lg:h-screen overflow-x-hidden
                     ${isMobileOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
                     lg:translate-x-0 ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}
                 `}

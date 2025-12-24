@@ -83,20 +83,11 @@ export default function RemindersPage() {
 
     const fetchReminders = async () => {
         try {
-            console.log('Fetching reminders...');
             const response = await fetch('/api/reminders');
             const data = await response.json();
-            console.log('Fetch reminders response:', data);
-            if (data.success) {
-                console.log(`Setting ${data.data.length} reminders`);
-                setReminders(data.data);
-            } else {
-                console.error('Failed to fetch reminders:', data.error);
-                alert('Failed to load reminders: ' + data.error);
-            }
+            if (data.success) setReminders(data.data);
         } catch (error) {
-            console.error('Error fetching reminders:', error);
-            alert('Error loading reminders. Check console for details.');
+            console.error('Error:', error);
         } finally {
             setIsLoading(false);
         }
@@ -114,7 +105,6 @@ export default function RemindersPage() {
                 body: JSON.stringify(formData),
             });
             const data = await response.json();
-            console.log('Save reminder response:', data);
             if (data.success) {
                 if (editingId) {
                     setReminders(reminders.map(r => r._id === editingId ? data.data : r));
@@ -122,13 +112,9 @@ export default function RemindersPage() {
                     setReminders([...reminders, data.data]);
                 }
                 closeModal();
-            } else {
-                console.error('Failed to save reminder:', data.error);
-                alert('Failed to save reminder: ' + data.error);
             }
         } catch (error) {
-            console.error('Error saving reminder:', error);
-            alert('Error saving reminder. Check console for details.');
+            console.error('Error:', error);
         }
     };
 

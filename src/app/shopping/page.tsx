@@ -64,24 +64,16 @@ export default function ShoppingPage() {
 
     const fetchStores = async () => {
         try {
-            console.log('Fetching stores...');
             const response = await fetch('/api/stores');
             const data = await response.json();
-            console.log('Fetch stores response:', data);
             if (data.success) {
-                console.log(`Setting ${data.data.length} stores with total items:`,
-                    data.data.reduce((sum: number, s: any) => sum + s.items.length, 0));
                 setStores(data.data);
                 if (data.data.length > 0 && !activeStore) {
                     setActiveStore(data.data[0]._id);
                 }
-            } else {
-                console.error('Failed to fetch stores:', data.error);
-                alert('Failed to load stores: ' + data.error);
             }
         } catch (error) {
             console.error('Error fetching stores:', error);
-            alert('Error loading stores. Check console for details.');
         } finally {
             setIsLoading(false);
         }
@@ -96,19 +88,14 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ name: newStoreName, color: newStoreColor }),
             });
             const data = await response.json();
-            console.log('Create store response:', data);
             if (data.success) {
                 setStores([...stores, data.data]);
                 setActiveStore(data.data._id);
                 setNewStoreName('');
                 setShowAddStore(false);
-            } else {
-                console.error('Failed to create store:', data.error);
-                alert('Failed to create store: ' + data.error);
             }
         } catch (error) {
-            console.error('Error creating store:', error);
-            alert('Error creating store. Check console for details.');
+            console.error('Error:', error);
         }
     };
 
@@ -135,18 +122,13 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ name: newItemName, quantity: newItemQty }),
             });
             const data = await response.json();
-            console.log('Add item response:', data);
             if (data.success) {
                 setStores(stores.map(s => s._id === activeStore ? data.data : s));
                 setNewItemName('');
                 setNewItemQty('');
-            } else {
-                console.error('Failed to add item:', data.error);
-                alert('Failed to add item: ' + data.error);
             }
         } catch (error) {
-            console.error('Error adding item:', error);
-            alert('Error adding item. Check console for details.');
+            console.error('Error:', error);
         }
     };
 
