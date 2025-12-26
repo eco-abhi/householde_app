@@ -87,7 +87,7 @@ function RecipesContent() {
                     </div>
                     <Link
                         href="/recipes/new"
-                        className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-emerald-200/50 hover:shadow-xl hover:shadow-emerald-200/60 transition-all active:scale-95 shrink-0 text-sm sm:text-base"
+                        className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-emerald-200/50 hover:shadow-xl hover:shadow-emerald-200/60 transition-all active:scale-95 shrink-0 text-sm sm:text-base"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Add Recipe</span>
@@ -174,7 +174,7 @@ function RecipesContent() {
                         {!searchQuery && (
                             <Link
                                 href="/recipes/new"
-                                className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-emerald-200/50 hover:shadow-xl hover:shadow-emerald-200/60 transition-all active:scale-95 text-sm sm:text-base"
+                                className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg shadow-emerald-200/50 hover:shadow-xl hover:shadow-emerald-200/60 transition-all active:scale-95 text-sm sm:text-base"
                             >
                                 <Plus className="w-4 h-4" />
                                 Add Your First Recipe

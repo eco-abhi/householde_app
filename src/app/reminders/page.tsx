@@ -435,7 +435,7 @@ export default function RemindersPage() {
                             <button
                                 onClick={handleSave}
                                 disabled={!formData.title.trim() || !formData.dueDate}
-                                className="w-full py-4 bg-linear-to-r from-purple-500 to-purple-600 text-white rounded-2xl font-bold mt-4 shadow-lg disabled:from-gray-300 disabled:shadow-none transition-all active:scale-95"
+                                className="w-full py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl font-bold mt-4 shadow-lg disabled:from-gray-300 disabled:shadow-none transition-all active:scale-95"
                             >
                                 {editingId ? 'Update Reminder' : 'Create Reminder'}
                             </button>

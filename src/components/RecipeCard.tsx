@@ -25,7 +25,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
             <div className="group relative flex flex-col bg-white rounded-2xl sm:rounded-3xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-gray-200/50 border border-gray-100 active:scale-[0.98] w-full">
 
                 {/* Image Container */}
-                <div className="relative aspect-4/5 overflow-hidden bg-gray-100 w-full">
+                <div className="relative aspect-[4/5] overflow-hidden bg-gray-100 w-full">
                     <img
                         src={recipe.imageUrl || '/placeholder-recipe.webp'}
                         alt={recipe.title}
@@ -54,7 +54,7 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                     </div>
 
                     {/* Gradient Overlay */}
-                    <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
                     {/* Bottom Content (Inside Image) */}
                     <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-5">
@@ -81,9 +81,9 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="p-3 sm:p-4 flex justify-between items-center bg-linear-to-b from-gray-50/50 to-white">
+                <div className="p-3 sm:p-4 flex justify-between items-center bg-gradient-to-b from-gray-50/50 to-white">
                     <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-linear-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-200/50 shrink-0">
+                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-200/50 shrink-0">
                             {recipe.ingredients.length}
                         </div>
                         <span className="text-[10px] sm:text-xs font-semibold text-gray-500 truncate">Ingredients</span>

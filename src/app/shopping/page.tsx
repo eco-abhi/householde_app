@@ -272,7 +272,7 @@ export default function ShoppingPage() {
                     </div>
                     <button
                         onClick={() => setShowAddStore(true)}
-                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-linear-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-semibold shadow-lg shadow-cyan-200/50 transition-all active:scale-95 text-sm"
+                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-semibold shadow-lg shadow-cyan-200/50 transition-all active:scale-95 text-sm"
                     >
                         <Plus className="w-4 h-4" />
                         <span className="hidden xs:inline">Store</span>
