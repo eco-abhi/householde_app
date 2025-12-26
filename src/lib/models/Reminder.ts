@@ -105,7 +105,10 @@ ReminderSchema.methods.getNextDueDate = function (): Date | null {
     return currentDue;
 };
 
-const Reminder: Model<IReminder> = mongoose.models.Reminder || mongoose.model<IReminder>('Reminder', ReminderSchema);
+// Delete existing model to avoid OverwriteModelError
+delete mongoose.models.Reminder;
+
+const Reminder: Model<IReminder> = mongoose.model<IReminder>('Reminder', ReminderSchema);
 
 export default Reminder;
 

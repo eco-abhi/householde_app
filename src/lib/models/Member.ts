@@ -35,7 +35,10 @@ const MemberSchema = new Schema<IMember>(
     }
 );
 
-const Member: Model<IMember> = mongoose.models.Member || mongoose.model<IMember>('Member', MemberSchema);
+// Delete existing model to avoid OverwriteModelError
+delete mongoose.models.Member;
+
+const Member: Model<IMember> = mongoose.model<IMember>('Member', MemberSchema);
 
 export default Member;
 

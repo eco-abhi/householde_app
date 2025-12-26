@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Reminder from '@/lib/models/Reminder';
+import Member from '@/lib/models/Member'; // Import Member model for populate
 
 // Helper to calculate next due date
 function getNextDueDate(currentDue: Date, recurrence: string): Date {
@@ -70,6 +71,15 @@ export async function PUT(
         const { id } = await params;
         const body = await request.json();
 
+        console.log('Updating reminder:', id, 'with body:', JSON.stringify(body, null, 2));
+
+        // Handle empty assignee string
+        if (body.assignee === '' || body.assignee === null || body.assignee === undefined) {
+            delete body.assignee;
+        }
+
+        console.log('After processing assignee:', JSON.stringify(body, null, 2));
+
         // If marking as completed and has recurrence, auto-renew
         if (body.completed === true) {
             const existingReminder = await Reminder.findById(id);
@@ -98,14 +108,19 @@ export async function PUT(
             );
         }
 
-        // Populate assignee
-        reminder = await reminder.populate('assignee');
+        // Populate assignee if it exists
+        if (reminder.assignee) {
+            await reminder.populate('assignee');
+        }
 
         return NextResponse.json({ success: true, data: reminder });
-    } catch (error) {
-        console.error('Error updating reminder:', error);
+    } catch (error: any) {
+        console.error('======= Error updating reminder =======');
+        console.error('Error:', error);
+        console.error('Message:', error.message);
+        console.error('Stack:', error.stack);
         return NextResponse.json(
-            { success: false, error: 'Failed to update reminder' },
+            { success: false, error: error.message || 'Failed to update reminder' },
             { status: 500 }
         );
     }
