@@ -88,8 +88,8 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ name: newStoreName, color: newStoreColor }),
             });
             const data = await response.json();
-            if (data.success) {
-                setStores([...stores, data.data]);
+            if (data.success && data.data) {
+                setStores(prevStores => [...prevStores, data.data]);
                 setActiveStore(data.data._id);
                 setNewStoreName('');
                 setShowAddStore(false);
@@ -103,9 +103,12 @@ export default function ShoppingPage() {
         if (!confirm('Delete this store and all its items?')) return;
         try {
             await fetch(`/api/stores/${storeId}`, { method: 'DELETE' });
-            const remaining = stores.filter(s => s._id !== storeId);
-            setStores(remaining);
+            setStores(prevStores => {
+                const remaining = prevStores.filter(s => s._id !== storeId);
+                return remaining;
+            });
             if (activeStore === storeId) {
+                const remaining = stores.filter(s => s._id !== storeId);
                 setActiveStore(remaining.length > 0 ? remaining[0]._id : null);
             }
         } catch (error) {
@@ -122,8 +125,11 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ name: newItemName, quantity: newItemQty }),
             });
             const data = await response.json();
-            if (data.success) {
-                setStores(stores.map(s => s._id === activeStore ? data.data : s));
+            if (data.success && data.data) {
+                // Update the specific store with the fresh data from API
+                setStores(prevStores => prevStores.map(s =>
+                    s._id === activeStore ? data.data : s
+                ));
                 setNewItemName('');
                 setNewItemQty('');
             }
@@ -141,11 +147,19 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ itemId, checked }),
             });
             const data = await response.json();
-            if (data.success) {
-                setStores(stores.map(s => s._id === activeStore ? data.data : s));
+            if (data.success && data.data) {
+                // Update the specific store with the fresh data from API
+                setStores(prevStores => prevStores.map(s =>
+                    s._id === activeStore ? data.data : s
+                ));
+            } else if (response.status === 404) {
+                // Item not found - data is stale, refetch everything
+                await fetchStores();
             }
         } catch (error) {
             console.error('Error:', error);
+            // Refetch on error to recover
+            await fetchStores();
         }
     };
 
@@ -158,12 +172,21 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ itemId }),
             });
             const data = await response.json();
-            if (data.success) {
-                setStores(stores.map(s => s._id === activeStore ? data.data : s));
+            if (data.success && data.data) {
+                // Update the specific store with the fresh data from API
+                setStores(prevStores => prevStores.map(s =>
+                    s._id === activeStore ? data.data : s
+                ));
+                setSwipedItem(null);
+            } else if (response.status === 404) {
+                // Item not found - data is stale, refetch everything
+                await fetchStores();
                 setSwipedItem(null);
             }
         } catch (error) {
             console.error('Error:', error);
+            // Refetch on error to recover
+            await fetchStores();
         }
     };
 
@@ -183,12 +206,21 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ itemId, name: editName, quantity: editQty }),
             });
             const data = await response.json();
-            if (data.success) {
-                setStores(stores.map(s => s._id === activeStore ? data.data : s));
+            if (data.success && data.data) {
+                // Update the specific store with the fresh data from API
+                setStores(prevStores => prevStores.map(s =>
+                    s._id === activeStore ? data.data : s
+                ));
+                setEditingItem(null);
+            } else if (response.status === 404) {
+                // Item not found - data is stale, refetch everything
+                await fetchStores();
                 setEditingItem(null);
             }
         } catch (error) {
             console.error('Error:', error);
+            // Refetch on error to recover
+            await fetchStores();
         }
     };
 
@@ -230,9 +262,9 @@ export default function ShoppingPage() {
                 body: JSON.stringify({ itemId: moveItemId, targetStoreId }),
             });
             const data = await response.json();
-            if (data.success) {
-                // Update both source and target stores
-                setStores(stores.map(s => {
+            if (data.success && data.data) {
+                // Update both source and target stores with fresh data from API
+                setStores(prevStores => prevStores.map(s => {
                     if (s._id === activeStore) return data.data.sourceStore;
                     if (s._id === targetStoreId) return data.data.targetStore;
                     return s;
@@ -240,9 +272,17 @@ export default function ShoppingPage() {
                 setMoveItemId(null);
                 setMoveItemName('');
                 setSwipedItem(null);
+            } else if (response.status === 404) {
+                // Item not found - data is stale, refetch everything
+                await fetchStores();
+                setMoveItemId(null);
+                setMoveItemName('');
+                setSwipedItem(null);
             }
         } catch (error) {
             console.error('Error moving item:', error);
+            // Refetch on error to recover
+            await fetchStores();
         }
     };
 
@@ -450,18 +490,9 @@ export default function ShoppingPage() {
                                                     setSwipedItem(swipedItem === item._id ? null : item._id);
                                                 }
                                             }}
-                                            onTouchStart={(e) => onStart(e.targetTouches[0].clientX)}
-                                            onTouchMove={(e) => onMove(e.targetTouches[0].clientX, item._id)}
-                                            onTouchEnd={onEnd}
-                                            onMouseDown={(e) => {
-                                                if (isMobileOrTablet) onStart(e.clientX);
-                                            }}
-                                            onMouseMove={(e) => {
-                                                if (isMobileOrTablet) onMove(e.clientX, item._id);
-                                            }}
-                                            onMouseUp={() => {
-                                                if (isMobileOrTablet) onEnd();
-                                            }}
+                                            onTouchStart={isMobileOrTablet ? (e) => onStart(e.touches[0].clientX) : undefined}
+                                            onTouchMove={isMobileOrTablet ? (e) => onMove(e.touches[0].clientX, item._id) : undefined}
+                                            onTouchEnd={isMobileOrTablet ? onEnd : undefined}
                                             onMouseLeave={() => {
                                                 if (isMobileOrTablet) onEnd();
                                             }}

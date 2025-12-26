@@ -126,11 +126,11 @@ export default function RemindersPage() {
                 body: JSON.stringify(formData),
             });
             const data = await response.json();
-            if (data.success) {
+            if (data.success && data.data) {
                 if (editingId) {
-                    setReminders(reminders.map(r => r._id === editingId ? data.data : r));
+                    setReminders(prevReminders => prevReminders.map(r => r._id === editingId ? data.data : r));
                 } else {
-                    setReminders([...reminders, data.data]);
+                    setReminders(prevReminders => [...prevReminders, data.data]);
                 }
                 closeModal();
             }
@@ -168,8 +168,8 @@ export default function RemindersPage() {
                 body: JSON.stringify({ completed: !reminder.completed }),
             });
             const data = await response.json();
-            if (data.success) {
-                setReminders(reminders.map(r => r._id === reminder._id ? data.data : r));
+            if (data.success && data.data) {
+                setReminders(prevReminders => prevReminders.map(r => r._id === reminder._id ? data.data : r));
             }
         } catch (error) {
             console.error('Error:', error);
@@ -180,7 +180,7 @@ export default function RemindersPage() {
         if (!confirm('Delete this reminder?')) return;
         try {
             await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
-            setReminders(reminders.filter(r => r._id !== id));
+            setReminders(prevReminders => prevReminders.filter(r => r._id !== id));
             setSwipedItem(null);
         } catch (error) {
             console.error('Error:', error);
@@ -195,18 +195,23 @@ export default function RemindersPage() {
     };
 
     // Swipe/Drag Logic triggers
-    const onStart = (clientX: number) => {
+    const onStart = (clientX: number, e?: React.TouchEvent | React.MouseEvent) => {
         if (!isMobileOrTablet) return;
         setDragStart(clientX);
         setIsDragging(true);
     };
-    const onMove = (clientX: number, itemId: string) => {
+    const onMove = (clientX: number, itemId: string, e?: React.TouchEvent | React.MouseEvent) => {
         if (!isDragging || !isMobileOrTablet) return;
         const diff = dragStart - clientX;
-        if (diff > 70) setSwipedItem(itemId);
-        if (diff < -70) setSwipedItem(null);
+        if (diff > 70) {
+            setSwipedItem(itemId);
+        } else if (diff < -70) {
+            setSwipedItem(null);
+        }
     };
-    const onEnd = () => setIsDragging(false);
+    const onEnd = () => {
+        setIsDragging(false);
+    };
 
     const getDueDateStatus = (dueDate: string) => {
         const due = new Date(dueDate);
@@ -275,22 +280,36 @@ export default function RemindersPage() {
                     return (
                         <div
                             key={reminder._id}
-                            className={`relative overflow-hidden rounded-3xl border border-gray-100 bg-white group ${isMobileOrTablet ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                            onTouchStart={(e) => onStart(e.targetTouches[0].clientX)}
-                            onTouchMove={(e) => onMove(e.targetTouches[0].clientX, reminder._id)}
-                            onTouchEnd={onEnd}
-                            onMouseDown={(e) => onStart(e.clientX)}
-                            onMouseMove={(e) => onMove(e.clientX, reminder._id)}
-                            onMouseUp={onEnd}
-                            onMouseLeave={onEnd}
+                            className={`relative overflow-hidden rounded-3xl border border-gray-100 bg-white group ${isMobileOrTablet ? 'touch-pan-y' : ''}`}
+                            onTouchStart={isMobileOrTablet ? (e) => {
+                                onStart(e.touches[0].clientX, e);
+                            } : undefined}
+                            onTouchMove={isMobileOrTablet ? (e) => {
+                                onMove(e.touches[0].clientX, reminder._id, e);
+                            } : undefined}
+                            onTouchEnd={isMobileOrTablet ? onEnd : undefined}
                         >
                             {/* Swipe Actions (Inclusive of your 1024px iPad) */}
                             {isMobileOrTablet && (
                                 <div className={`absolute inset-y-0 right-0 flex transition-transform ${swipedItem === reminder._id ? 'translate-x-0' : 'translate-x-full'}`}>
-                                    <button onClick={() => openEditModal(reminder)} className="h-full px-6 bg-blue-500 text-white font-bold flex items-center gap-2">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openEditModal(reminder);
+                                            setSwipedItem(null);
+                                        }}
+                                        className="h-full px-6 bg-blue-500 text-white font-bold flex items-center gap-2 active:bg-blue-600"
+                                    >
                                         <Pencil className="w-4 h-4" /> Edit
                                     </button>
-                                    <button onClick={() => deleteReminder(reminder._id)} className="h-full px-6 bg-red-500 text-white font-bold flex items-center gap-2">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteReminder(reminder._id);
+                                            setSwipedItem(null);
+                                        }}
+                                        className="h-full px-6 bg-red-500 text-white font-bold flex items-center gap-2 active:bg-red-600"
+                                    >
                                         <Trash2 className="w-4 h-4" /> Delete
                                     </button>
                                 </div>
@@ -298,11 +317,13 @@ export default function RemindersPage() {
 
                             {/* Main Item Content */}
                             <div
-                                className={`p-5 lg:p-6 transition-transform flex items-start gap-4 ${isMobileOrTablet && swipedItem === reminder._id ? '-translate-x-[180px]' : 'translate-x-0'}`}
-                                style={{ transition: 'transform 0.3s ease', touchAction: isMobileOrTablet ? 'pan-y' : 'auto' }}
+                                className={`p-5 lg:p-6 transition-transform duration-300 flex items-start gap-4 ${isMobileOrTablet && swipedItem === reminder._id ? '-translate-x-[180px]' : 'translate-x-0'}`}
                             >
                                 <button
-                                    onClick={() => toggleComplete(reminder)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleComplete(reminder);
+                                    }}
                                     className={`mt-1 w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${reminder.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-200 hover:border-purple-400'}`}
                                 >
                                     {reminder.completed && <Check className="w-4 h-4" />}
@@ -350,10 +371,24 @@ export default function RemindersPage() {
                                 {/* Desktop Buttons (Hidden when screen <= 1024px) */}
                                 {!isMobileOrTablet && (
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openEditModal(reminder)} className="p-2.5 text-gray-300 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all" title="Edit">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openEditModal(reminder);
+                                            }}
+                                            className="p-2.5 text-gray-300 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition-all"
+                                            title="Edit"
+                                        >
                                             <Pencil className="w-5 h-5" />
                                         </button>
-                                        <button onClick={() => deleteReminder(reminder._id)} className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Delete">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteReminder(reminder._id);
+                                            }}
+                                            className="p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                            title="Delete"
+                                        >
                                             <Trash2 className="w-5 h-5" />
                                         </button>
                                     </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Reminder from '@/lib/models/Reminder';
-import Member from '@/lib/models/Member'; // Import Member model for populate
+import '@/lib/models/Member'; // Ensure Member model is registered for populate
 
 // GET all reminders
 export async function GET() {

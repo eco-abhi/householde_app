@@ -43,7 +43,15 @@ export async function PUT(
     try {
         await connectToDatabase();
         const { id } = await params;
-        const { itemId, checked, name, quantity } = await request.json();
+        const body = await request.json();
+        const { itemId, checked, name, quantity } = body;
+
+        if (!itemId) {
+            return NextResponse.json(
+                { success: false, error: 'Item ID is required' },
+                { status: 400 }
+            );
+        }
 
         const updateFields: Record<string, unknown> = {};
         if (typeof checked === 'boolean') {
