@@ -9,6 +9,7 @@ import {
     ShoppingCart,
     CheckSquare,
     Users,
+    Dumbbell,
     Menu,
     X,
     ChevronLeft,
@@ -21,6 +22,7 @@ const navItems = [
     { href: '/recipes', label: 'Recipes', icon: ChefHat },
     { href: '/shopping', label: 'Shopping Lists', icon: ShoppingCart },
     { href: '/reminders', label: 'Reminders', icon: CheckSquare },
+    { href: '/exercises', label: 'Exercises', icon: Dumbbell },
     { href: '/members', label: 'Members', icon: Users },
 ];
 
