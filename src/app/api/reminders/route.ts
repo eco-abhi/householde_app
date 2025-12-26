@@ -10,9 +10,7 @@ export async function GET() {
         const reminders = await Reminder.find().populate('assignee').sort({ dueDate: 1 });
         return NextResponse.json({ success: true, data: reminders });
     } catch (error: any) {
-        console.error('======= Error fetching reminders =======');
-        console.error('Error:', error);
-        console.error('Message:', error.message);
+        console.error('Error fetching reminders:', error);
         return NextResponse.json(
             { success: false, error: error.message || 'Failed to fetch reminders' },
             { status: 500 }
@@ -40,10 +38,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, data: reminder }, { status: 201 });
     } catch (error: any) {
-        console.error('======= Error creating reminder =======');
-        console.error('Error:', error);
-        console.error('Message:', error.message);
-        console.error('Stack:', error.stack);
+        console.error('Error creating reminder:', error);
         return NextResponse.json(
             { success: false, error: error.message || 'Failed to create reminder' },
             { status: 500 }
