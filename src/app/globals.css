@@ -11,6 +11,19 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Allow specific containers to scroll horizontally even when parent has overflow-x-hidden */
+  .scroll-container-x {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    /* Ensure touch events work for scrolling */
+    touch-action: pan-x;
+    /* Prevent text selection while dragging */
+    user-select: none;
+    -webkit-user-select: none;
+  }
 }
 
 /* Safari/iOS specific fixes */

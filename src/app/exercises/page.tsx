@@ -67,6 +67,12 @@ export default function ExercisesPage() {
     const [allExercises, setAllExercises] = useState<Exercise[]>([]);
     const [selectedExercises, setSelectedExercises] = useState<Set<string>>(new Set());
 
+    // Swipe/Drag State
+    const [swipedItem, setSwipedItem] = useState<string | null>(null);
+    const [dragStart, setDragStart] = useState<number>(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isMobileOrTablet, setIsMobileOrTablet] = useState(true);
+
     const [formData, setFormData] = useState({
         name: '',
         bodyPart: 'chest' as BodyPart,
@@ -77,6 +83,19 @@ export default function ExercisesPage() {
         notes: '',
         link: '',
     });
+
+    // Detect screen size for threshold 1024px
+    useEffect(() => {
+        const checkScreenSize = () => {
+            const isMobile = window.innerWidth <= 1024;
+            setIsMobileOrTablet(isMobile);
+        };
+        checkScreenSize();
+        window.addEventListener('resize', checkScreenSize);
+        return () => {
+            window.removeEventListener('resize', checkScreenSize);
+        };
+    }, []);
 
     useEffect(() => {
         fetchMembers();
@@ -139,6 +158,23 @@ export default function ExercisesPage() {
         } catch (error) {
             console.error('Error fetching all exercises:', error);
         }
+    };
+
+    // Swipe/Drag handlers
+    const onStart = (clientX: number) => {
+        setDragStart(clientX);
+        setIsDragging(true);
+    };
+
+    const onMove = (clientX: number, itemId: string) => {
+        if (!isDragging) return;
+        const diff = dragStart - clientX;
+        if (diff > 70) setSwipedItem(itemId);
+        if (diff < -70) setSwipedItem(null);
+    };
+
+    const onEnd = () => {
+        setIsDragging(false);
     };
 
     const handleSave = async () => {
@@ -476,54 +512,56 @@ export default function ExercisesPage() {
     }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto pb-20 sm:pb-6 w-full">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-                        <Dumbbell className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
-                        Exercise Tracker
-                    </h1>
-                    <p className="text-gray-500 text-sm sm:text-base">Plan and track workouts for your household</p>
+            <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
+                            <Dumbbell className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-blue-600" />
+                            Exercises
+                        </h1>
+                        <p className="text-gray-500 text-xs sm:text-sm lg:text-base hidden sm:block">Plan and track workouts for your household</p>
+                    </div>
                 </div>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
                     <button
                         onClick={openLibraryModal}
-                        className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-emerald-600 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg hover:bg-emerald-700 active:scale-95 transition-all text-sm sm:text-base"
+                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 text-white rounded-lg sm:rounded-xl font-semibold shadow-md hover:bg-emerald-700 active:scale-95 transition-all text-xs sm:text-sm whitespace-nowrap shrink-0"
                     >
-                        <Library className="w-4 h-4 sm:w-5 sm:h-5" /> Library
+                        <Library className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Library
                     </button>
                     <button
                         onClick={() => setShowAIModal(true)}
-                        className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-purple-600 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg hover:bg-purple-700 active:scale-95 transition-all text-sm sm:text-base"
+                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-purple-600 text-white rounded-lg sm:rounded-xl font-semibold shadow-md hover:bg-purple-700 active:scale-95 transition-all text-xs sm:text-sm whitespace-nowrap shrink-0"
                     >
-                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" /> AI Generate
+                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden xs:inline">AI</span> Generate
                     </button>
                     <button
                         onClick={() => setShowModal(true)}
-                        className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-semibold shadow-lg hover:bg-blue-700 active:scale-95 transition-all text-sm sm:text-base"
+                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-lg sm:rounded-xl font-semibold shadow-md hover:bg-blue-700 active:scale-95 transition-all text-xs sm:text-sm whitespace-nowrap shrink-0"
                     >
-                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Add Exercise
+                        <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Add
                     </button>
                 </div>
             </div>
 
             {/* Member Selector */}
-            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100 mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Select Member</label>
-                <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-6 shadow-sm border border-gray-100 mb-4 sm:mb-6">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Select Member</label>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide scroll-container-x" style={{ marginLeft: '-0.75rem', marginRight: '-0.75rem', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     {members.map(member => (
                         <button
                             key={member._id}
                             onClick={() => setSelectedMember(member._id)}
-                            className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-semibold transition-all whitespace-nowrap text-sm sm:text-base ${
+                            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-semibold transition-all whitespace-nowrap text-xs sm:text-sm shrink-0 touch-manipulation ${
                                 selectedMember === member._id
-                                    ? 'text-white shadow-lg'
+                                    ? 'text-white shadow-md'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                             style={selectedMember === member._id ? { backgroundColor: member.color } : {}}
                         >
-                            <User className="w-4 h-4" />
+                            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             {member.name}
                         </button>
                     ))}
@@ -531,66 +569,106 @@ export default function ExercisesPage() {
             </div>
 
             {/* Day Selector */}
-            <div className="flex gap-2 overflow-x-auto mb-6 pb-2">
+            <div className="flex gap-2 overflow-x-auto mb-4 sm:mb-6 pb-2 scrollbar-hide scroll-container-x" style={{ marginLeft: '-0.75rem', marginRight: '-0.75rem', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                 {DAYS_OF_WEEK.map(day => (
                     <button
                         key={day.value}
                         onClick={() => setSelectedDay(day.value)}
-                        className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-semibold transition-all whitespace-nowrap text-sm sm:text-base ${
+                        className={`px-4 sm:px-5 py-2 rounded-lg sm:rounded-xl font-semibold transition-all whitespace-nowrap text-xs sm:text-sm shrink-0 touch-manipulation ${
                             selectedDay === day.value
                                 ? 'bg-blue-600 text-white shadow-md'
                                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                         }`}
                     >
-                        {day.label}
+                        <span className="hidden sm:inline">{day.label}</span>
+                        <span className="sm:hidden">{day.label.slice(0, 3)}</span>
                     </button>
                 ))}
             </div>
 
             {/* Exercises by Body Part */}
             {Object.keys(exercisesByBodyPart).length === 0 ? (
-                <div className="text-center py-16 sm:py-20 bg-white rounded-2xl border border-gray-100">
-                    <Dumbbell className="w-16 h-16 sm:w-20 sm:h-20 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-base sm:text-lg mb-2">No exercises planned for {DAYS_OF_WEEK.find(d => d.value === selectedDay)?.label}</p>
-                    <button onClick={() => setShowModal(true)} className="text-blue-600 font-semibold hover:underline text-sm sm:text-base">
+                <div className="text-center py-12 sm:py-16 bg-white rounded-xl sm:rounded-2xl border border-gray-100">
+                    <Dumbbell className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-gray-500 text-sm sm:text-base mb-2 px-4">No exercises for {DAYS_OF_WEEK.find(d => d.value === selectedDay)?.label}</p>
+                    <button onClick={() => setShowModal(true)} className="text-blue-600 font-semibold hover:underline text-xs sm:text-sm">
                         Add your first exercise →
                     </button>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-3 sm:space-y-4">
                     {BODY_PARTS.map(bodyPart => {
                         const bodyPartExercises = exercisesByBodyPart[bodyPart.value];
                         if (!bodyPartExercises || bodyPartExercises.length === 0) return null;
 
                         return (
-                            <div key={bodyPart.value} className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
-                                <div className="flex items-center gap-2 sm:gap-3 mb-4">
-                                    <div className={`w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br ${bodyPart.color} rounded-xl flex items-center justify-center text-xl sm:text-2xl shadow-md`}>
+                            <div key={bodyPart.value} className="mb-4">
+                                <div className="flex items-center gap-2 mb-3 px-1">
+                                    <div className={`w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br ${bodyPart.color} rounded-xl flex items-center justify-center text-lg sm:text-xl shadow-sm shrink-0`}>
                                         {bodyPart.icon}
                                     </div>
-                                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">{bodyPart.label}</h2>
-                                    <span className="ml-auto px-2 sm:px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs sm:text-sm font-semibold">
-                                        {bodyPartExercises.length} {bodyPartExercises.length === 1 ? 'exercise' : 'exercises'}
+                                    <h2 className="text-base sm:text-lg font-bold text-gray-900">{bodyPart.label}</h2>
+                                    <span className="ml-auto px-2.5 py-0.5 sm:px-3 sm:py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold shrink-0">
+                                        {bodyPartExercises.length}
                                     </span>
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="space-y-3 sm:space-y-4">
                                     {bodyPartExercises.map(exercise => (
-                                        <div key={exercise._id} className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors group">
+                                        <div key={exercise._id} className="relative overflow-hidden bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm group">
+                                            {/* Swipe Actions (Mobile/Tablet) */}
+                                            {isMobileOrTablet && (
+                                                <div className={`absolute inset-y-0 right-0 flex transition-transform duration-200 ${swipedItem === exercise._id ? 'z-20 translate-x-0' : 'z-0 translate-x-full'}`}>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openEditModal(exercise);
+                                                            setSwipedItem(null);
+                                                        }}
+                                                        className="h-full px-4 sm:px-5 bg-blue-500 text-white font-bold flex items-center gap-1.5 sm:gap-2 active:bg-blue-600 text-xs sm:text-sm"
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            deleteExercise(exercise._id);
+                                                            setSwipedItem(null);
+                                                        }}
+                                                        className="h-full px-4 sm:px-5 bg-red-500 text-white font-bold flex items-center gap-1.5 sm:gap-2 active:bg-red-600 text-xs sm:text-sm"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Delete
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            <div 
+                                                className={`relative z-10 flex items-start gap-3 sm:gap-4 p-4 sm:p-5 lg:p-6 transition-all duration-300 select-none ${isMobileOrTablet && swipedItem === exercise._id ? '-translate-x-[180px]' : 'translate-x-0'}`}
+                                                style={{ touchAction: 'pan-y' }}
+                                                onTouchStart={(e) => {
+                                                    onStart(e.touches[0].clientX);
+                                                }}
+                                                onTouchMove={(e) => {
+                                                    onMove(e.touches[0].clientX, exercise._id);
+                                                }}
+                                                onTouchEnd={() => {
+                                                    onEnd();
+                                                }}
+                                            >
                                             <button
                                                 onClick={() => toggleComplete(exercise)}
-                                                className="shrink-0 mt-0.5"
+                                                className="shrink-0 mt-1 touch-manipulation"
                                             >
                                                 {exercise.completed ? (
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                                                    <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-500" />
                                                 ) : (
-                                                    <Circle className="w-6 h-6 text-gray-300 hover:text-gray-400" />
+                                                    <Circle className="w-6 h-6 sm:w-7 sm:h-7 text-gray-300 hover:text-gray-400" />
                                                 )}
                                             </button>
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className={`font-bold text-sm sm:text-base ${exercise.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                                <div className="flex items-start gap-2 mb-2">
+                                                    <h3 className={`font-bold text-sm sm:text-base lg:text-lg flex-1 ${exercise.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                                                         {exercise.name}
                                                     </h3>
                                                     {exercise.link && (
@@ -598,47 +676,40 @@ export default function ExercisesPage() {
                                                             href={exercise.link}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-all"
+                                                            className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-all shrink-0 touch-manipulation"
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
-                                                            <ExternalLink className="w-4 h-4" />
+                                                            <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                                         </a>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600">
-                                                    {exercise.sets && <span className={`px-2 py-0.5 bg-white rounded-md ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.sets} sets</span>}
-                                                    {exercise.reps && <span className={`px-2 py-0.5 bg-white rounded-md ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.reps} reps</span>}
-                                                    {exercise.weight && <span className={`px-2 py-0.5 bg-white rounded-md ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.weight}</span>}
-                                                    {exercise.duration && <span className={`px-2 py-0.5 bg-white rounded-md ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.duration}</span>}
+                                                    {exercise.sets && <span className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full font-semibold ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.sets} sets</span>}
+                                                    {exercise.reps && <span className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full font-semibold ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.reps} reps</span>}
+                                                    {exercise.weight && <span className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full font-semibold ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.weight}</span>}
+                                                    {exercise.duration && <span className={`inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full font-semibold ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.duration}</span>}
                                                 </div>
-                                                {exercise.notes && <p className={`text-xs sm:text-sm text-gray-500 mt-1 ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.notes}</p>}
+                                                {exercise.notes && <p className={`text-xs sm:text-sm text-gray-500 mt-2 ${exercise.completed ? 'opacity-60' : ''}`}>{exercise.notes}</p>}
                                             </div>
 
-                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {exercise.link && (
-                                                    <a
-                                                        href={exercise.link}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                            {/* Desktop Actions */}
+                                            {!isMobileOrTablet && (
+                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                    <button
+                                                        onClick={() => openEditModal(exercise)}
                                                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                        onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        <ExternalLink className="w-4 h-4" />
-                                                    </a>
-                                                )}
-                                                <button
-                                                    onClick={() => openEditModal(exercise)}
-                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                >
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteExercise(exercise._id)}
-                                                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteExercise(exercise._id)}
+                                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         </div>
                                     ))}
                                 </div>

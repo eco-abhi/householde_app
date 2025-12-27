@@ -23,6 +23,7 @@ interface Reminder {
     description?: string;
     dueDate: string;
     completed: boolean;
+    completedAt?: string;
     recurrence: RecurrenceType;
     category: Category;
     priority: Priority;
@@ -64,7 +65,7 @@ export default function RemindersPage() {
     const [swipedItem, setSwipedItem] = useState<string | null>(null);
     const [dragStart, setDragStart] = useState<number>(0);
     const [isDragging, setIsDragging] = useState(false);
-    const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
+    const [isMobileOrTablet, setIsMobileOrTablet] = useState(true); // Start as true to enable touch handlers
 
     const [formData, setFormData] = useState({
         title: '',
@@ -79,12 +80,14 @@ export default function RemindersPage() {
     // Detect screen size for threshold 1024px
     useEffect(() => {
         const checkScreenSize = () => {
-            // Updated to be inclusive of 1024px for iPad Pro portrait mode
-            setIsMobileOrTablet(window.innerWidth <= 1024);
+            const isMobile = window.innerWidth <= 1024;
+            setIsMobileOrTablet(isMobile);
         };
         checkScreenSize();
         window.addEventListener('resize', checkScreenSize);
-        return () => window.removeEventListener('resize', checkScreenSize);
+        return () => {
+            window.removeEventListener('resize', checkScreenSize);
+        };
     }, []);
 
     useEffect(() => {
@@ -169,7 +172,23 @@ export default function RemindersPage() {
             });
             const data = await response.json();
             if (data.success && data.data) {
-                setReminders(prevReminders => prevReminders.map(r => r._id === reminder._id ? data.data : r));
+                if (reminder.recurrence !== 'none' && !reminder.completed) {
+                    // For recurring reminders being completed:
+                    // 1. Mark the old one as completed
+                    // 2. Add the new cloned reminder
+                    setReminders(prevReminders => {
+                        const updated = prevReminders.map(r =>
+                            r._id === reminder._id
+                                ? { ...r, completed: true, completedAt: new Date().toISOString() }
+                                : r
+                        );
+                        // Add the new cloned reminder
+                        return [...updated, data.data];
+                    });
+                } else {
+                    // For non-recurring or uncompleting, just update
+                    setReminders(prevReminders => prevReminders.map(r => r._id === reminder._id ? data.data : r));
+                }
             }
         } catch (error) {
             console.error('Error:', error);
@@ -195,13 +214,13 @@ export default function RemindersPage() {
     };
 
     // Swipe/Drag Logic triggers
-    const onStart = (clientX: number, e?: React.TouchEvent | React.MouseEvent) => {
-        if (!isMobileOrTablet) return;
+    const onStart = (clientX: number) => {
         setDragStart(clientX);
         setIsDragging(true);
     };
-    const onMove = (clientX: number, itemId: string, e?: React.TouchEvent | React.MouseEvent) => {
-        if (!isDragging || !isMobileOrTablet) return;
+
+    const onMove = (clientX: number, itemId: string) => {
+        if (!isDragging) return;
         const diff = dragStart - clientX;
         if (diff > 70) {
             setSwipedItem(itemId);
@@ -209,6 +228,7 @@ export default function RemindersPage() {
             setSwipedItem(null);
         }
     };
+
     const onEnd = () => {
         setIsDragging(false);
     };
@@ -230,9 +250,19 @@ export default function RemindersPage() {
     };
 
     const filteredReminders = reminders.filter(r => {
-        if (filter === 'pending') return !r.completed;
-        if (filter === 'completed') return r.completed;
-        return true;
+        // Calculate days until due
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dueDate = new Date(r.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Only show if due within 15 days or overdue
+        const isWithinRange = daysUntilDue <= 15;
+
+        if (filter === 'pending') return !r.completed && isWithinRange;
+        if (filter === 'completed') return r.completed && isWithinRange;
+        return isWithinRange;
     }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
     if (isLoading) return (
@@ -242,36 +272,58 @@ export default function RemindersPage() {
     );
 
     return (
-        <div className="p-5 lg:p-8 max-w-4xl mx-auto animate-fade-in">
+        <div className="p-3 sm:p-5 lg:p-8 max-w-4xl mx-auto animate-fade-in pb-20 sm:pb-8">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-4 sm:mb-6 lg:mb-8">
                 <div>
-                    <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">To-do / Replace</h1>
-                    <p className="text-gray-500">{reminders.filter(r => !r.completed).length} pending</p>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Reminders</h1>
+                    <p className="text-xs sm:text-sm text-gray-500">
+                        {filteredReminders.filter(r => !r.completed).length} pending
+                        {reminders.filter(r => !r.completed).length > filteredReminders.filter(r => !r.completed).length && (
+                            <span className="text-xs ml-1">
+                                (showing due within 15 days)
+                            </span>
+                        )}
+                    </p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-5 py-3 bg-purple-600 text-white rounded-2xl font-semibold shadow-lg active:scale-95"
+                    className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-3 bg-purple-600 text-white rounded-lg sm:rounded-xl lg:rounded-2xl font-semibold shadow-md sm:shadow-lg active:scale-95 text-xs sm:text-sm lg:text-base shrink-0 touch-manipulation"
                 >
-                    <Plus className="w-5 h-5" /> Add Reminder
+                    <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> <span>Add</span>
                 </button>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex gap-3 mb-8">
+            <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
                 {(['pending', 'completed', 'all'] as const).map(f => (
                     <button
                         key={f}
                         onClick={() => setFilter(f)}
-                        className={`px-5 py-2 rounded-2xl font-semibold transition-all capitalize active:scale-95 ${filter === f ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100'}`}
+                        className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl font-semibold transition-all capitalize active:scale-95 text-xs sm:text-sm shrink-0 touch-manipulation ${filter === f ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100'}`}
                     >
                         {f}
                     </button>
                 ))}
             </div>
 
+            {/* Info Banner */}
+            {reminders.length > filteredReminders.length && (
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg sm:rounded-xl flex items-start gap-2 sm:gap-3">
+                    <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-0.5 shrink-0" />
+                    <div className="text-xs sm:text-sm">
+                        <p className="font-semibold text-blue-900 mb-1">
+                            Showing reminders due within 15 days or overdue
+                        </p>
+                        <p className="text-blue-700">
+                            {reminders.length - filteredReminders.length} reminder{reminders.length - filteredReminders.length !== 1 ? 's are' : ' is'} hidden (due more than 15 days away)
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Reminders List */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
                 {filteredReminders.map(reminder => {
                     const status = getDueDateStatus(reminder.dueDate);
                     const category = CATEGORY_OPTIONS.find(c => c.value === reminder.category);
@@ -280,25 +332,18 @@ export default function RemindersPage() {
                     return (
                         <div
                             key={reminder._id}
-                            className={`relative overflow-hidden rounded-3xl border border-gray-100 bg-white group ${isMobileOrTablet ? 'touch-pan-y' : ''}`}
-                            onTouchStart={isMobileOrTablet ? (e) => {
-                                onStart(e.touches[0].clientX, e);
-                            } : undefined}
-                            onTouchMove={isMobileOrTablet ? (e) => {
-                                onMove(e.touches[0].clientX, reminder._id, e);
-                            } : undefined}
-                            onTouchEnd={isMobileOrTablet ? onEnd : undefined}
+                            className="relative overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-3xl border border-gray-100 bg-white group shadow-sm"
                         >
-                            {/* Swipe Actions (Inclusive of your 1024px iPad) */}
+                            {/* Swipe Actions (Mobile/Tablet) */}
                             {isMobileOrTablet && (
-                                <div className={`absolute inset-y-0 right-0 flex transition-transform ${swipedItem === reminder._id ? 'translate-x-0' : 'translate-x-full'}`}>
+                                <div className={`absolute inset-y-0 right-0 flex transition-transform duration-200 ${swipedItem === reminder._id ? 'z-20 translate-x-0' : 'z-0 translate-x-full'}`}>
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             openEditModal(reminder);
                                             setSwipedItem(null);
                                         }}
-                                        className="h-full px-6 bg-blue-500 text-white font-bold flex items-center gap-2 active:bg-blue-600"
+                                        className="h-full px-5 sm:px-6 bg-blue-500 text-white font-bold flex items-center gap-2 active:bg-blue-600"
                                     >
                                         <Pencil className="w-4 h-4" /> Edit
                                     </button>
@@ -308,7 +353,7 @@ export default function RemindersPage() {
                                             deleteReminder(reminder._id);
                                             setSwipedItem(null);
                                         }}
-                                        className="h-full px-6 bg-red-500 text-white font-bold flex items-center gap-2 active:bg-red-600"
+                                        className="h-full px-5 sm:px-6 bg-red-500 text-white font-bold flex items-center gap-2 active:bg-red-600"
                                     >
                                         <Trash2 className="w-4 h-4" /> Delete
                                     </button>
@@ -317,55 +362,80 @@ export default function RemindersPage() {
 
                             {/* Main Item Content */}
                             <div
-                                className={`p-5 lg:p-6 transition-transform duration-300 flex items-start gap-4 ${isMobileOrTablet && swipedItem === reminder._id ? '-translate-x-[180px]' : 'translate-x-0'}`}
+                                className={`relative z-10 p-4 sm:p-5 lg:p-6 transition-transform duration-300 flex items-start gap-3 sm:gap-4 select-none ${isMobileOrTablet && swipedItem === reminder._id ? '-translate-x-[180px]' : 'translate-x-0'}`}
+                                style={{ touchAction: 'pan-y' }}
+                                onTouchStart={(e) => {
+                                    onStart(e.touches[0].clientX);
+                                }}
+                                onTouchMove={(e) => {
+                                    onMove(e.touches[0].clientX, reminder._id);
+                                }}
+                                onTouchEnd={() => {
+                                    onEnd();
+                                }}
                             >
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         toggleComplete(reminder);
                                     }}
-                                    className={`mt-1 w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${reminder.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-200 hover:border-purple-400'}`}
+                                    className={`mt-0.5 w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors touch-manipulation ${reminder.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-200 hover:border-purple-400'}`}
                                 >
-                                    {reminder.completed && <Check className="w-4 h-4" />}
+                                    {reminder.completed && <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                                 </button>
 
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h3 className={`font-bold text-lg truncate ${reminder.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>{reminder.title}</h3>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-black ${priorityStyle.bg} ${priorityStyle.text}`}>{reminder.priority}</span>
+                                        <h3 className={`font-bold text-sm sm:text-base lg:text-lg truncate ${reminder.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>{reminder.title}</h3>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-black ${priorityStyle.bg} ${priorityStyle.text} shrink-0`}>{reminder.priority}</span>
                                     </div>
                                     {reminder.description && (
-                                        <p className={`text-sm mt-1 ${reminder.completed ? 'text-gray-400' : 'text-gray-600'}`}>
+                                        <p className={`text-xs sm:text-sm mt-1 ${reminder.completed ? 'text-gray-400' : 'text-gray-600'}`}>
                                             {reminder.description}
                                         </p>
                                     )}
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${status.color}`}>
-                                            <Calendar className="w-3.5 h-3.5" /> {status.label}
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
+                                        <span className={`inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${status.color}`}>
+                                            <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> {status.label}
                                         </span>
-                                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-semibold">
+                                        <span className="bg-gray-100 text-gray-600 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold">
                                             {category?.icon} {category?.label}
                                         </span>
                                         {reminder.recurrence !== 'none' && (
-                                            <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1">
-                                                <RefreshCw className="w-3.5 h-3.5" />
-                                                {RECURRENCE_OPTIONS.find(r => r.value === reminder.recurrence)?.label}
+                                            <span className="bg-purple-100 text-purple-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold inline-flex items-center gap-1">
+                                                <RefreshCw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                                                <span className="hidden xs:inline">{RECURRENCE_OPTIONS.find(r => r.value === reminder.recurrence)?.label}</span>
+                                                <span className="xs:hidden">Repeat</span>
                                             </span>
                                         )}
                                         {reminder.assignee && (
                                             <span
-                                                className="px-3 py-1 rounded-full text-xs font-semibold text-white inline-flex items-center gap-1.5"
+                                                className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold text-white inline-flex items-center gap-1.5"
                                                 style={{ backgroundColor: reminder.assignee.color }}
                                             >
                                                 <div
-                                                    className="w-4 h-4 rounded-full bg-white/30 flex items-center justify-center text-[10px] font-bold"
+                                                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-white/30 flex items-center justify-center text-[9px] sm:text-[10px] font-bold"
                                                 >
                                                     {reminder.assignee.name.charAt(0).toUpperCase()}
                                                 </div>
-                                                {reminder.assignee.name}
+                                                <span className="hidden xs:inline">{reminder.assignee.name}</span>
                                             </span>
                                         )}
                                     </div>
+                                    {reminder.completed && reminder.completedAt && (
+                                        <p className="text-[10px] sm:text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                            <Check className="w-3 h-3 shrink-0" />
+                                            <span className="truncate">
+                                                Completed on {new Date(reminder.completedAt).toLocaleDateString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    year: 'numeric',
+                                                    hour: 'numeric',
+                                                    minute: '2-digit'
+                                                })}
+                                            </span>
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Desktop Buttons (Hidden when screen <= 1024px) */}
@@ -397,6 +467,31 @@ export default function RemindersPage() {
                         </div>
                     );
                 })}
+
+                {/* Empty State */}
+                {filteredReminders.length === 0 && reminders.length > 0 && (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+                        <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                        <h3 className="text-lg font-bold text-gray-700 mb-2">
+                            No reminders due soon
+                        </h3>
+                        <p className="text-gray-500 text-sm">
+                            All your reminders are due more than 15 days away
+                        </p>
+                    </div>
+                )}
+
+                {filteredReminders.length === 0 && reminders.length === 0 && (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
+                        <Bell className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                        <h3 className="text-lg font-bold text-gray-700 mb-2">
+                            No reminders yet
+                        </h3>
+                        <p className="text-gray-500 text-sm">
+                            Click the + button to add your first reminder
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Modal for Add/Edit */}

@@ -41,8 +41,6 @@ export default function StyleChecker() {
           window.location.reload();
         }
       }, 2000);
-    } else {
-      console.log('✅ Tailwind CSS loaded successfully');
     }
   }, []);
 

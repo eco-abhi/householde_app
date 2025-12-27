@@ -13,7 +13,6 @@ export default function AutoRefresh() {
                 const timeSinceLastActive = Date.now() - lastActive;
 
                 if (timeSinceLastActive > ONE_HOUR) {
-                    console.log('Auto-refreshing: App was inactive for more than 1 hour');
                     window.location.reload();
                 }
 

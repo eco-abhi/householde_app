@@ -61,7 +61,7 @@ export async function GET(
     }
 }
 
-// PUT update reminder (including complete with auto-renew)
+// PUT update reminder (including complete with auto-clone for recurring)
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -76,22 +76,49 @@ export async function PUT(
             delete body.assignee;
         }
 
-        // If marking as completed and has recurrence, auto-renew
+        // If marking as completed and has recurrence, clone it
         if (body.completed === true) {
             const existingReminder = await Reminder.findById(id);
 
             if (existingReminder && existingReminder.recurrence !== 'none') {
-                // Calculate next due date from today (not from old due date)
+                // Mark the current reminder as completed
+                body.completedAt = new Date();
+                
+                // Update the existing reminder
+                await Reminder.findByIdAndUpdate(id, body, {
+                    new: true,
+                    runValidators: true,
+                });
+
+                // Calculate next due date from today
                 const nextDue = getNextDueDate(new Date(), existingReminder.recurrence);
 
-                body.completed = false;
-                body.dueDate = nextDue;
-                body.completedAt = undefined;
+                // Create a new reminder (clone) with next due date
+                const newReminder = await Reminder.create({
+                    title: existingReminder.title,
+                    description: existingReminder.description,
+                    dueDate: nextDue,
+                    completed: false,
+                    recurrence: existingReminder.recurrence,
+                    category: existingReminder.category,
+                    priority: existingReminder.priority,
+                    assignee: existingReminder.assignee,
+                });
+
+                // Populate assignee if it exists
+                if (newReminder.assignee) {
+                    await newReminder.populate('assignee');
+                }
+
+                // Return the new reminder (the one that's still pending)
+                return NextResponse.json({ success: true, data: newReminder });
             } else {
+                // Non-recurring reminder, just mark as completed
                 body.completedAt = new Date();
             }
         }
 
+        // Regular update (non-completion or non-recurring)
         let reminder = await Reminder.findByIdAndUpdate(id, body, {
             new: true,
             runValidators: true,
