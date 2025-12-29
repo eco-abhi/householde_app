@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     Home,
     ChefHat,
@@ -14,7 +14,8 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
-    RefreshCw
+    RefreshCw,
+    LogOut
 } from 'lucide-react';
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [mounted, setMounted] = useState(false);
@@ -47,6 +49,16 @@ export default function Sidebar() {
         const newState = !isCollapsed;
         setIsCollapsed(newState);
         localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+    };
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            router.push('/login');
+            router.refresh();
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     };
 
     const isActive = (href: string) => {
@@ -164,6 +176,27 @@ export default function Sidebar() {
                             {isCollapsed && (
                                 <div className="absolute left-full ml-2 px-3 py-2 bg-slate-900 text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap hidden lg:block z-50">
                                     Refresh
+                                </div>
+                            )}
+                        </button>
+
+                        {/* Logout Button */}
+                        <button
+                            onClick={handleLogout}
+                            className={`
+                                group relative flex items-center gap-3 w-full rounded-lg transition-all text-slate-500 hover:bg-red-50 hover:text-red-600
+                                ${isCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}
+                            `}
+                        >
+                            <LogOut className="w-5 h-5 shrink-0" />
+                            <span className={`font-medium text-sm whitespace-nowrap transition-all duration-300 overflow-hidden ${isCollapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'}`}>
+                                Logout
+                            </span>
+
+                            {/* Tooltip for collapsed state */}
+                            {isCollapsed && (
+                                <div className="absolute left-full ml-2 px-3 py-2 bg-slate-900 text-white text-xs font-medium rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap hidden lg:block z-50">
+                                    Logout
                                 </div>
                             )}
                         </button>

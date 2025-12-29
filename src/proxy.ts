@@ -2,11 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function proxy(request: NextRequest) {
-    // TEMPORARY: Disable auth for testing iframe
-    // TODO: Re-enable authentication after iframe is working
-    return NextResponse.next();
-
-    /*
     // Check if user is authenticated
     const authCookie = request.cookies.get('household-auth');
     
@@ -27,7 +22,6 @@ export function proxy(request: NextRequest) {
     }
     
     return NextResponse.next();
-    */
 }
 
 export const config = {
