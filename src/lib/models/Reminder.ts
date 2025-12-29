@@ -20,6 +20,7 @@ export interface IReminder extends Document {
     recurrence: RecurrenceType;
     category: 'replace' | 'maintenance' | 'general';
     priority: 'low' | 'medium' | 'high';
+    points: number;
     assignee?: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
@@ -61,6 +62,12 @@ const ReminderSchema = new Schema<IReminder>(
             type: String,
             enum: ['low', 'medium', 'high'],
             default: 'medium',
+        },
+        points: {
+            type: Number,
+            default: 5,
+            min: 1,
+            max: 10,
         },
         assignee: {
             type: Schema.Types.ObjectId,

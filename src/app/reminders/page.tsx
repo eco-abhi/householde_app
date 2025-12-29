@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
     Plus, Trash2, Check, Clock, RefreshCw,
-    Loader2, X, Calendar, Bell, Pencil
+    Loader2, X, Calendar, Bell, Pencil, User
 } from 'lucide-react';
 
 type RecurrenceType = 'none' | 'daily' | 'every_other_day' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -27,6 +27,7 @@ interface Reminder {
     recurrence: RecurrenceType;
     category: Category;
     priority: Priority;
+    points: number;
     assignee?: Member;
 }
 
@@ -60,6 +61,7 @@ export default function RemindersPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('pending');
+    const [selectedMember, setSelectedMember] = useState<string>('all'); // 'all' or member _id
 
     // Swipe/Drag State
     const [swipedItem, setSwipedItem] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export default function RemindersPage() {
         recurrence: 'none' as RecurrenceType,
         category: 'general' as Category,
         priority: 'medium' as Priority,
+        points: 5,
         assignee: '' as string,
     });
 
@@ -151,6 +154,7 @@ export default function RemindersPage() {
             recurrence: reminder.recurrence,
             category: reminder.category,
             priority: reminder.priority,
+            points: reminder.points || 5,
             assignee: reminder.assignee?._id || '',
         });
         setSwipedItem(null);
@@ -209,7 +213,7 @@ export default function RemindersPage() {
     const resetForm = () => {
         setFormData({
             title: '', description: '', dueDate: '',
-            recurrence: 'none', category: 'general', priority: 'medium', assignee: '',
+            recurrence: 'none', category: 'general', priority: 'medium', points: 5, assignee: '',
         });
     };
 
@@ -260,9 +264,23 @@ export default function RemindersPage() {
         // Only show if due within 15 days or overdue
         const isWithinRange = daysUntilDue <= 15;
 
-        if (filter === 'pending') return !r.completed && isWithinRange;
-        if (filter === 'completed') return r.completed && isWithinRange;
-        return isWithinRange;
+        // Filter by completion status
+        let statusMatch = true;
+        if (filter === 'pending') statusMatch = !r.completed && isWithinRange;
+        else if (filter === 'completed') statusMatch = r.completed && isWithinRange;
+        else statusMatch = isWithinRange;
+
+        // Filter by member
+        let memberMatch = true;
+        if (selectedMember !== 'all') {
+            if (selectedMember === 'unassigned') {
+                memberMatch = !r.assignee;
+            } else {
+                memberMatch = r.assignee?._id === selectedMember;
+            }
+        }
+
+        return statusMatch && memberMatch;
     }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
     if (isLoading) return (
@@ -294,8 +312,8 @@ export default function RemindersPage() {
                 </button>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
+            {/* Status Filter Tabs */}
+            <div className="flex gap-2 sm:gap-3 mb-3 sm:mb-4 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 scrollbar-hide">
                 {(['pending', 'completed', 'all'] as const).map(f => (
                     <button
                         key={f}
@@ -303,6 +321,44 @@ export default function RemindersPage() {
                         className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl lg:rounded-2xl font-semibold transition-all capitalize active:scale-95 text-xs sm:text-sm shrink-0 touch-manipulation ${filter === f ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100'}`}
                     >
                         {f}
+                    </button>
+                ))}
+            </div>
+
+            {/* Member Filter Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-4 sm:mb-6 scrollbar-hide scroll-container-x" style={{ marginLeft: '-0.75rem', marginRight: '-0.75rem', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
+                <button
+                    onClick={() => setSelectedMember('all')}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-semibold transition-all whitespace-nowrap text-xs sm:text-sm shrink-0 touch-manipulation ${selectedMember === 'all'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'bg-white text-gray-500 border border-gray-100'
+                        }`}
+                >
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    All Members
+                </button>
+                <button
+                    onClick={() => setSelectedMember('unassigned')}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-semibold transition-all whitespace-nowrap text-xs sm:text-sm shrink-0 touch-manipulation ${selectedMember === 'unassigned'
+                        ? 'bg-gray-600 text-white shadow-md'
+                        : 'bg-white text-gray-500 border border-gray-100'
+                        }`}
+                >
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    Unassigned
+                </button>
+                {members.map(member => (
+                    <button
+                        key={member._id}
+                        onClick={() => setSelectedMember(member._id)}
+                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-semibold transition-all whitespace-nowrap text-xs sm:text-sm shrink-0 touch-manipulation ${selectedMember === member._id
+                            ? 'text-white shadow-md'
+                            : 'bg-white text-gray-500 border border-gray-100'
+                            }`}
+                        style={selectedMember === member._id ? { backgroundColor: member.color } : {}}
+                    >
+                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        {member.name}
                     </button>
                 ))}
             </div>
@@ -400,6 +456,9 @@ export default function RemindersPage() {
                                         </span>
                                         <span className="bg-gray-100 text-gray-600 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold">
                                             {category?.icon} {category?.label}
+                                        </span>
+                                        <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold">
+                                            ⭐ {reminder.points} pts
                                         </span>
                                         {reminder.recurrence !== 'none' && (
                                             <span className="bg-purple-100 text-purple-700 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold inline-flex items-center gap-1">
@@ -546,6 +605,22 @@ export default function RemindersPage() {
                                     <option value="medium">Medium Priority</option>
                                     <option value="high">High Priority</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Points (1-10)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    step="1"
+                                    value={formData.points}
+                                    onChange={(e) => {
+                                        const value = parseInt(e.target.value) || 5;
+                                        setFormData({ ...formData, points: Math.min(Math.max(value, 1), 10) });
+                                    }}
+                                    className="w-full px-5 py-4 bg-gray-50 border-2 rounded-2xl outline-none focus:border-purple-400 transition-all"
+                                    placeholder="Enter points (1-10, default: 5)"
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Assign To</label>

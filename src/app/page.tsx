@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ChefHat, ShoppingCart, Bell, ArrowRight,
-  Loader2, AlertCircle, Check, Plus, TrendingUp, Activity
+  Loader2, AlertCircle, Check, Plus, TrendingUp, Activity, Trophy, Award
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -29,6 +29,14 @@ interface Reminder {
   priority: string;
 }
 
+interface MemberStats {
+  memberId: string;
+  memberName: string;
+  memberColor: string;
+  totalPoints: number;
+  completedCount: number;
+}
+
 export default function Home() {
   const [stats, setStats] = useState<DashboardStats>({
     recipes: 0,
@@ -38,6 +46,7 @@ export default function Home() {
   });
   const [stores, setStores] = useState<Store[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [pointsStats, setPointsStats] = useState<MemberStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -46,16 +55,18 @@ export default function Home() {
 
   const fetchDashboardData = async () => {
     try {
-      const [recipesRes, storesRes, remindersRes] = await Promise.all([
+      const [recipesRes, storesRes, remindersRes, statsRes] = await Promise.all([
         fetch('/api/recipes'),
         fetch('/api/stores'),
         fetch('/api/reminders'),
+        fetch('/api/reminders/stats'),
       ]);
 
-      const [recipesData, storesData, remindersData] = await Promise.all([
+      const [recipesData, storesData, remindersData, statsData] = await Promise.all([
         recipesRes.json(),
         storesRes.json(),
         remindersRes.json(),
+        statsRes.json(),
       ]);
 
       const storesList: Store[] = storesData.success ? storesData.data : [];
@@ -80,6 +91,7 @@ export default function Home() {
 
       setStores(storesList);
       setReminders(remindersList.filter(r => !r.completed).slice(0, 5));
+      setPointsStats(statsData.success ? statsData.data : []);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -331,6 +343,57 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Points Leaderboard */}
+        {pointsStats.length > 0 && (
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-sm border border-amber-200/60 p-6 mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-slate-900">Points Leaderboard</h2>
+                <p className="text-xs text-slate-600">Completed reminders tracked</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {pointsStats.slice(0, 5).map((member, index) => (
+                <div
+                  key={member.memberId}
+                  className="flex items-center gap-4 p-4 bg-white rounded-xl border border-amber-100 hover:border-amber-200 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="relative">
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white shadow-sm"
+                        style={{ backgroundColor: member.memberColor }}
+                      >
+                        {member.memberName.charAt(0).toUpperCase()}
+                      </div>
+                      {index < 3 && (
+                        <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                            index === 1 ? 'bg-gray-300 text-gray-700' :
+                              'bg-amber-600 text-white'
+                          }`}>
+                          {index + 1}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-900">{member.memberName}</p>
+                      <p className="text-xs text-slate-500">{member.completedCount} tasks completed</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Award className="w-5 h-5 text-amber-500" />
+                    <span className="text-xl font-bold text-amber-600">{member.totalPoints}</span>
+                    <span className="text-xs text-slate-500 font-semibold">pts</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
