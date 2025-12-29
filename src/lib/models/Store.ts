@@ -12,6 +12,7 @@ export interface IStore extends Document {
     _id: mongoose.Types.ObjectId;
     name: string;
     color: string;
+    event: string;
     items: IShoppingItem[];
     createdAt: Date;
     updatedAt: Date;
@@ -50,6 +51,11 @@ const StoreSchema = new Schema<IStore>(
         color: {
             type: String,
             default: '#059669', // emerald-600
+        },
+        event: {
+            type: String,
+            default: 'General',
+            trim: true,
         },
         items: [ShoppingItemSchema],
     },

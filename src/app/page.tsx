@@ -50,23 +50,53 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Fetch on mount
     fetchDashboardData();
+
+    // Refetch when page becomes visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
     try {
+      // Add cache busting to ensure fresh data
+      const timestamp = Date.now();
       const [recipesRes, storesRes, remindersRes, statsRes] = await Promise.all([
-        fetch('/api/recipes'),
-        fetch('/api/stores'),
-        fetch('/api/reminders'),
-        fetch('/api/reminders/stats'),
+        fetch(`/api/recipes?_=${timestamp}`, { cache: 'no-store' }),
+        fetch(`/api/stores?_=${timestamp}`, { cache: 'no-store' }),
+        fetch(`/api/reminders?_=${timestamp}`, { cache: 'no-store' }),
+        fetch(`/api/reminders/stats?_=${timestamp}`, { cache: 'no-store' }),
       ]);
 
+      // Check if responses are OK before parsing
+      const parseJson = async (res: Response, name: string) => {
+        if (!res.ok) {
+          throw new Error(`${name} API returned ${res.status}`);
+        }
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.error(`${name} API returned invalid JSON:`, text.substring(0, 200));
+          return { success: false, data: [] };
+        }
+      };
+
       const [recipesData, storesData, remindersData, statsData] = await Promise.all([
-        recipesRes.json(),
-        storesRes.json(),
-        remindersRes.json(),
-        statsRes.json(),
+        parseJson(recipesRes, 'Recipes'),
+        parseJson(storesRes, 'Stores'),
+        parseJson(remindersRes, 'Reminders'),
+        parseJson(statsRes, 'Stats'),
       ]);
 
       const storesList: Store[] = storesData.success ? storesData.data : [];
@@ -372,8 +402,8 @@ export default function Home() {
                       </div>
                       {index < 3 && (
                         <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                            index === 1 ? 'bg-gray-300 text-gray-700' :
-                              'bg-amber-600 text-white'
+                          index === 1 ? 'bg-gray-300 text-gray-700' :
+                            'bg-amber-600 text-white'
                           }`}>
                           {index + 1}
                         </div>

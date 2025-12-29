@@ -35,11 +35,25 @@ export default function MembersPage() {
 
     useEffect(() => {
         fetchMembers();
+
+        // Refetch when page becomes visible (user navigates back)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchMembers();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     const fetchMembers = async () => {
         try {
-            const response = await fetch('/api/members');
+            const timestamp = Date.now();
+            const response = await fetch(`/api/members?_=${timestamp}`, { cache: 'no-store' });
             const data = await response.json();
             if (data.success) setMembers(data.data);
         } catch (error) {
@@ -243,8 +257,8 @@ export default function MembersPage() {
                                                 key={color}
                                                 onClick={() => setFormData({ ...formData, color })}
                                                 className={`w-10 h-10 rounded-lg transition-all ${formData.color === color
-                                                        ? 'ring-4 ring-slate-300 scale-110'
-                                                        : 'hover:scale-105'
+                                                    ? 'ring-4 ring-slate-300 scale-110'
+                                                    : 'hover:scale-105'
                                                     }`}
                                                 style={{ backgroundColor: color }}
                                             />

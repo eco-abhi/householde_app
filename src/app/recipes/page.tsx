@@ -26,12 +26,26 @@ function RecipesContent() {
             fetchRecipes();
             setInitialized(true);
         }
+
+        // Refetch when page becomes visible (user navigates back)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchRecipes();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [searchParams, initialized]);
 
     const fetchRecipes = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/recipes');
+            const timestamp = Date.now();
+            const response = await fetch(`/api/recipes?_=${timestamp}`, { cache: 'no-store' });
             if (!response.ok) throw new Error('Failed to fetch');
 
             const data = await response.json();

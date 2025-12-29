@@ -99,6 +99,23 @@ export default function ExercisesPage() {
 
     useEffect(() => {
         fetchMembers();
+
+        // Refetch when page becomes visible (user navigates back)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchMembers();
+                if (selectedMember) {
+                    fetchExercises();
+                    fetchAllExercises();
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     useEffect(() => {
@@ -111,7 +128,8 @@ export default function ExercisesPage() {
 
     const fetchMembers = async () => {
         try {
-            const response = await fetch('/api/members');
+            const timestamp = Date.now();
+            const response = await fetch(`/api/members?_=${timestamp}`, { cache: 'no-store' });
             const data = await response.json();
             if (data.success && data.data.length > 0) {
                 setMembers(data.data);

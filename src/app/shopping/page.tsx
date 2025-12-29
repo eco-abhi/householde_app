@@ -17,6 +17,7 @@ interface Store {
     _id: string;
     name: string;
     color: string;
+    event: string;
     items: ShoppingItem[];
 }
 
@@ -31,13 +32,17 @@ const DEFAULT_COLORS = [
 
 export default function ShoppingPage() {
     const [stores, setStores] = useState<Store[]>([]);
+    const [selectedEvent, setSelectedEvent] = useState<string>('all');
     const [activeStore, setActiveStore] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [newItemName, setNewItemName] = useState('');
     const [newItemQty, setNewItemQty] = useState('');
     const [showAddStore, setShowAddStore] = useState(false);
+    const [showAddEvent, setShowAddEvent] = useState(false);
     const [newStoreName, setNewStoreName] = useState('');
     const [newStoreColor, setNewStoreColor] = useState(DEFAULT_COLORS[0]);
+    const [newStoreEvent, setNewStoreEvent] = useState('General');
+    const [newEventName, setNewEventName] = useState('');
     const [swipedItem, setSwipedItem] = useState<string | null>(null);
     const [dragStart, setDragStart] = useState<number>(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -63,11 +68,39 @@ export default function ShoppingPage() {
 
     useEffect(() => {
         fetchStores();
+
+        // Refetch when page becomes visible (user navigates back)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchStores();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
+
+    // Auto-select first store when event changes
+    useEffect(() => {
+        const filteredStores = selectedEvent === 'all'
+            ? stores
+            : stores.filter(s => (s.event || 'General') === selectedEvent);
+
+        if (filteredStores.length > 0 && !activeStore) {
+            setActiveStore(filteredStores[0]._id);
+        } else if (filteredStores.length > 0 && !filteredStores.find(s => s._id === activeStore)) {
+            // If current active store is not in filtered list, select first one
+            setActiveStore(filteredStores[0]._id);
+        }
+    }, [selectedEvent, stores, activeStore]);
 
     const fetchStores = async () => {
         try {
-            const response = await fetch('/api/stores');
+            const timestamp = Date.now();
+            const response = await fetch(`/api/stores?_=${timestamp}`, { cache: 'no-store' });
             const data = await response.json();
             if (data.success) {
                 setStores(data.data);
@@ -82,19 +115,31 @@ export default function ShoppingPage() {
         }
     };
 
+    const createEvent = () => {
+        if (!newEventName.trim()) return;
+        setSelectedEvent(newEventName);
+        setNewStoreEvent(newEventName);
+        setNewEventName('');
+        setShowAddEvent(false);
+        setActiveStore(null);
+        // Open add store modal immediately so user can add a store to this event
+        setShowAddStore(true);
+    };
+
     const createStore = async () => {
         if (!newStoreName.trim()) return;
         try {
             const response = await fetch('/api/stores', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newStoreName, color: newStoreColor }),
+                body: JSON.stringify({ name: newStoreName, color: newStoreColor, event: newStoreEvent }),
             });
             const data = await response.json();
             if (data.success && data.data) {
                 setStores(prevStores => [...prevStores, data.data]);
                 setActiveStore(data.data._id);
                 setNewStoreName('');
+                setNewStoreEvent('General');
                 setShowAddStore(false);
             }
         } catch (error) {
@@ -290,7 +335,15 @@ export default function ShoppingPage() {
         }
     };
 
-    const currentStore = stores.find(s => s._id === activeStore);
+    // Get unique events from stores
+    const uniqueEvents = Array.from(new Set(stores.map(s => s.event || 'General')));
+
+    // Filter stores by selected event
+    const filteredStores = selectedEvent === 'all'
+        ? stores
+        : stores.filter(s => (s.event || 'General') === selectedEvent);
+
+    const currentStore = filteredStores.find(s => s._id === activeStore);
     const uncheckedItems = currentStore?.items.filter(i => !i.checked) || [];
     const checkedItems = currentStore?.items.filter(i => i.checked) || [];
 
@@ -312,21 +365,86 @@ export default function ShoppingPage() {
                 <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 lg:mb-6">
                     <div className="min-w-0 flex-1">
                         <h1 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-slate-900 truncate">Shopping Lists</h1>
-                        <p className="text-slate-500 text-xs sm:text-sm hidden sm:block">Organize by store</p>
+                        <p className="text-slate-500 text-xs sm:text-sm hidden sm:block">Organize by event & store</p>
                     </div>
-                    <button
-                        onClick={() => setShowAddStore(true)}
-                        className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-lg sm:rounded-xl font-semibold shadow-md shadow-cyan-200/50 transition-all active:scale-95 text-xs sm:text-sm shrink-0 touch-manipulation"
-                    >
-                        <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        <span>Add Store</span>
-                    </button>
+                    <div className="flex gap-2 shrink-0">
+                        <button
+                            onClick={() => setShowAddEvent(true)}
+                            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg sm:rounded-xl font-semibold shadow-md shadow-purple-200/50 transition-all active:scale-95 text-xs sm:text-sm touch-manipulation"
+                        >
+                            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Add Event</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                // Set the event to current selection (or General if 'all')
+                                if (selectedEvent !== 'all') {
+                                    setNewStoreEvent(selectedEvent);
+                                } else {
+                                    setNewStoreEvent('General');
+                                }
+                                setShowAddStore(true);
+                            }}
+                            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-lg sm:rounded-xl font-semibold shadow-md shadow-cyan-200/50 transition-all active:scale-95 text-xs sm:text-sm touch-manipulation"
+                        >
+                            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <span>Add Store</span>
+                        </button>
+                    </div>
                 </div>
 
-                {/* Store Tabs */}
-                {stores.length > 0 && (
+                {/* Event Filter Tabs */}
+                {uniqueEvents.length > 0 && (
                     <div className="flex gap-2 overflow-x-auto pb-2 mb-3 sm:mb-4 scrollbar-hide scroll-container-x" style={{ marginLeft: '-0.75rem', marginRight: '-0.75rem', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
-                        {stores.map(store => {
+                        <button
+                            onClick={() => {
+                                setSelectedEvent('all');
+                                setActiveStore(null);
+                            }}
+                            className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm transition-all active:scale-95 shrink-0 whitespace-nowrap touch-manipulation ${selectedEvent === 'all'
+                                ? 'bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-md'
+                                : 'bg-white text-slate-600 border border-slate-200'
+                                }`}
+                        >
+                            All Events
+                        </button>
+                        {uniqueEvents.map(event => {
+                            const eventStores = stores.filter(s => (s.event || 'General') === event);
+                            const pendingCount = eventStores.reduce((sum, store) =>
+                                sum + store.items.filter(i => !i.checked).length, 0
+                            );
+                            const isGeneral = event === 'General';
+                            return (
+                                <button
+                                    key={event}
+                                    onClick={() => {
+                                        setSelectedEvent(event);
+                                        setActiveStore(null);
+                                    }}
+                                    className={`flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm transition-all active:scale-95 shrink-0 whitespace-nowrap touch-manipulation ${selectedEvent === event
+                                        ? isGeneral
+                                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md'
+                                            : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                                        : 'bg-white text-slate-600 border border-slate-200'
+                                        }`}
+                                >
+                                    <span>{event}</span>
+                                    {pendingCount > 0 && (
+                                        <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${selectedEvent === event ? 'bg-white/25' : isGeneral ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'
+                                            }`}>
+                                            {pendingCount}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Store Tabs */}
+                {filteredStores.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-3 sm:mb-4 scrollbar-hide scroll-container-x" style={{ marginLeft: '-0.75rem', marginRight: '-0.75rem', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
+                        {filteredStores.map(store => {
                             const pendingCount = store.items.filter(i => !i.checked).length;
                             const isActive = store._id === activeStore;
                             return (
@@ -365,6 +483,18 @@ export default function ShoppingPage() {
                             className="px-4 sm:px-5 py-2 sm:py-2.5 bg-cyan-500 text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm touch-manipulation"
                         >
                             Add your first store
+                        </button>
+                    </div>
+                ) : filteredStores.length === 0 ? (
+                    <div className="text-center py-10 sm:py-12 lg:py-16 bg-white/80 rounded-xl sm:rounded-2xl border border-slate-200 shadow-lg">
+                        <ShoppingCart className="w-10 h-10 sm:w-12 sm:h-12 text-blue-400 mx-auto mb-3" />
+                        <h2 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 mb-2 sm:mb-3 px-4">No Stores for {selectedEvent}</h2>
+                        <p className="text-xs sm:text-sm text-slate-500 mb-4">Create a store for this event</p>
+                        <button
+                            onClick={() => setShowAddStore(true)}
+                            className="px-4 sm:px-5 py-2 sm:py-2.5 bg-blue-500 text-white rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm touch-manipulation"
+                        >
+                            Add Store
                         </button>
                     </div>
                 ) : currentStore && (
@@ -595,15 +725,35 @@ export default function ShoppingPage() {
                                     placeholder="Store name..."
                                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border-2 border-slate-200 rounded-lg sm:rounded-xl outline-none focus:border-cyan-400 text-xs sm:text-sm touch-manipulation"
                                 />
-                                <div className="grid grid-cols-6 gap-2">
-                                    {DEFAULT_COLORS.map(color => (
-                                        <button
-                                            key={color}
-                                            onClick={() => setNewStoreColor(color)}
-                                            className={`aspect-square rounded-lg border-2 sm:border-3 transition-transform touch-manipulation ${newStoreColor === color ? 'border-slate-400 scale-110' : 'border-transparent'}`}
-                                            style={{ backgroundColor: color }}
-                                        />
-                                    ))}
+                                <div>
+                                    <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-2">Event/Occasion</label>
+                                    <input
+                                        type="text"
+                                        value={newStoreEvent}
+                                        onChange={(e) => setNewStoreEvent(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && createStore()}
+                                        placeholder="e.g., Weekly Groceries, Birthday Party..."
+                                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border-2 border-slate-200 rounded-lg sm:rounded-xl outline-none focus:border-cyan-400 text-xs sm:text-sm touch-manipulation"
+                                        list="events"
+                                    />
+                                    <datalist id="events">
+                                        {uniqueEvents.map(event => (
+                                            <option key={event} value={event} />
+                                        ))}
+                                    </datalist>
+                                </div>
+                                <div>
+                                    <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-2">Color</label>
+                                    <div className="grid grid-cols-6 gap-2">
+                                        {DEFAULT_COLORS.map(color => (
+                                            <button
+                                                key={color}
+                                                onClick={() => setNewStoreColor(color)}
+                                                className={`aspect-square rounded-lg border-2 sm:border-3 transition-transform touch-manipulation ${newStoreColor === color ? 'border-slate-400 scale-110' : 'border-transparent'}`}
+                                                style={{ backgroundColor: color }}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
                                 <div className="flex gap-2 pt-2">
                                     <button
@@ -645,12 +795,12 @@ export default function ShoppingPage() {
                                     <X className="w-4 h-4 sm:w-5 sm:h-5" />
                                 </button>
                             </div>
-                            {stores.filter(s => s._id !== activeStore).length === 0 ? (
-                                <p className="text-center py-6 sm:py-8 text-slate-500 text-xs sm:text-sm">No other stores available</p>
+                            {stores.filter(s => s._id !== activeStore && s.event === currentStore?.event).length === 0 ? (
+                                <p className="text-center py-6 sm:py-8 text-slate-500 text-xs sm:text-sm">No other stores in this event</p>
                             ) : (
                                 <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                                     {stores
-                                        .filter(s => s._id !== activeStore)
+                                        .filter(s => s._id !== activeStore && s.event === currentStore?.event)
                                         .map(store => (
                                             <button
                                                 key={store._id}
@@ -667,6 +817,49 @@ export default function ShoppingPage() {
                                         ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Event Modal */}
+                {showAddEvent && (
+                    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+                        <div className="bg-white rounded-xl sm:rounded-2xl w-full max-w-sm p-4 sm:p-5 lg:p-6 shadow-2xl">
+                            <div className="flex justify-between items-center mb-4 sm:mb-5">
+                                <h2 className="text-lg sm:text-xl font-bold text-slate-900">Add Event</h2>
+                                <button
+                                    onClick={() => setShowAddEvent(false)}
+                                    className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-lg transition-colors touch-manipulation"
+                                >
+                                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                                </button>
+                            </div>
+                            <div className="space-y-3 sm:space-y-4">
+                                <input
+                                    type="text"
+                                    value={newEventName}
+                                    onChange={(e) => setNewEventName(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && createEvent()}
+                                    placeholder="Event name (e.g., Birthday Party, Weekly Groceries)..."
+                                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border-2 border-slate-200 rounded-lg sm:rounded-xl outline-none focus:border-purple-400 text-xs sm:text-sm touch-manipulation"
+                                    autoFocus
+                                />
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        onClick={() => setShowAddEvent(false)}
+                                        className="flex-1 py-2 sm:py-2.5 bg-slate-100 rounded-lg sm:rounded-xl font-semibold text-slate-700 text-xs sm:text-sm touch-manipulation"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={createEvent}
+                                        disabled={!newEventName.trim()}
+                                        className="flex-1 py-2 sm:py-2.5 bg-purple-500 text-white rounded-lg sm:rounded-xl font-semibold shadow-md sm:shadow-lg shadow-purple-200/50 text-xs sm:text-sm touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Create
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

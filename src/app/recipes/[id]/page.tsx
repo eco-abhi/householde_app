@@ -26,11 +26,25 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
 
     useEffect(() => {
         fetchRecipe();
+
+        // Refetch when page becomes visible (user navigates back)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchRecipe();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [id]);
 
     const fetchRecipe = async () => {
         try {
-            const response = await fetch(`/api/recipes/${id}`);
+            const timestamp = Date.now();
+            const response = await fetch(`/api/recipes/${id}?_=${timestamp}`, { cache: 'no-store' });
             const data = await response.json();
             if (data.success) {
                 setRecipe(data.data);
@@ -254,8 +268,8 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                                             }`}
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-all shadow-md ${checkedSteps.has(idx)
-                                                ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-200/50 scale-95'
-                                                : 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-orange-200/50'
+                                            ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-emerald-200/50 scale-95'
+                                            : 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-orange-200/50'
                                             }`}>
                                             {checkedSteps.has(idx) ? <Check className="w-5 h-5" /> : idx + 1}
                                         </div>

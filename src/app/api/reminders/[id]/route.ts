@@ -102,6 +102,7 @@ export async function PUT(
                     recurrence: existingReminder.recurrence,
                     category: existingReminder.category,
                     priority: existingReminder.priority,
+                    points: existingReminder.points,
                     assignee: existingReminder.assignee,
                 });
 
@@ -111,7 +112,11 @@ export async function PUT(
                 }
 
                 // Return the new reminder (the one that's still pending)
-                return NextResponse.json({ success: true, data: newReminder });
+                return NextResponse.json({ success: true, data: newReminder }, {
+                    headers: {
+                        'Cache-Control': 'no-store, no-cache, must-revalidate',
+                    },
+                });
             } else {
                 // Non-recurring reminder, just mark as completed
                 body.completedAt = new Date();
@@ -136,7 +141,11 @@ export async function PUT(
             await reminder.populate('assignee');
         }
 
-        return NextResponse.json({ success: true, data: reminder });
+        return NextResponse.json({ success: true, data: reminder }, {
+            headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate',
+            },
+        });
     } catch (error: any) {
         console.error('Error updating reminder:', error);
         return NextResponse.json(

@@ -96,11 +96,26 @@ export default function RemindersPage() {
     useEffect(() => {
         fetchReminders();
         fetchMembers();
+
+        // Refetch when page becomes visible (user navigates back)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchReminders();
+                fetchMembers();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     const fetchReminders = async () => {
         try {
-            const response = await fetch('/api/reminders');
+            const timestamp = Date.now();
+            const response = await fetch(`/api/reminders?_=${timestamp}`, { cache: 'no-store' });
             const data = await response.json();
             if (data.success) setReminders(data.data);
         } catch (error) {
@@ -112,7 +127,8 @@ export default function RemindersPage() {
 
     const fetchMembers = async () => {
         try {
-            const response = await fetch('/api/members');
+            const timestamp = Date.now();
+            const response = await fetch(`/api/members?_=${timestamp}`, { cache: 'no-store' });
             const data = await response.json();
             if (data.success) setMembers(data.data);
         } catch (error) {
@@ -130,11 +146,18 @@ export default function RemindersPage() {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
+                cache: 'no-store',
             });
             const data = await response.json();
             if (data.success && data.data) {
                 if (editingId) {
-                    setReminders(prevReminders => prevReminders.map(r => r._id === editingId ? data.data : r));
+                    // Update the reminder in state with fresh data - create new array to force re-render
+                    setReminders(prevReminders => {
+                        const updated = prevReminders.map(r =>
+                            r._id === editingId ? { ...data.data } : r
+                        );
+                        return [...updated]; // Create new array reference
+                    });
                 } else {
                     setReminders(prevReminders => [...prevReminders, data.data]);
                 }
@@ -173,6 +196,7 @@ export default function RemindersPage() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ completed: !reminder.completed }),
+                cache: 'no-store',
             });
             const data = await response.json();
             if (data.success && data.data) {
@@ -186,12 +210,17 @@ export default function RemindersPage() {
                                 ? { ...r, completed: true, completedAt: new Date().toISOString() }
                                 : r
                         );
-                        // Add the new cloned reminder
-                        return [...updated, data.data];
+                        // Add the new cloned reminder - force new array
+                        return [...updated, { ...data.data }];
                     });
                 } else {
-                    // For non-recurring or uncompleting, just update
-                    setReminders(prevReminders => prevReminders.map(r => r._id === reminder._id ? data.data : r));
+                    // For non-recurring or uncompleting, just update - force new array
+                    setReminders(prevReminders => {
+                        const updated = prevReminders.map(r =>
+                            r._id === reminder._id ? { ...data.data } : r
+                        );
+                        return [...updated];
+                    });
                 }
             }
         } catch (error) {
@@ -202,7 +231,10 @@ export default function RemindersPage() {
     const deleteReminder = async (id: string) => {
         if (!confirm('Delete this reminder?')) return;
         try {
-            await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
+            await fetch(`/api/reminders/${id}`, {
+                method: 'DELETE',
+                cache: 'no-store',
+            });
             setReminders(prevReminders => prevReminders.filter(r => r._id !== id));
             setSwipedItem(null);
         } catch (error) {
